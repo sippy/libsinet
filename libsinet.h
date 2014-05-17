@@ -37,4 +37,11 @@ ssize_t sin_recvfrom(void *s, void * restrict buf, size_t len, int flags,
   struct sockaddr * restrict from, socklen_t * restrict fromlen);
 int sin_close(void *s);
 
+struct sin_event;
+struct timespec;
+
+void *sin_queue(void);
+int sin_event(void *q, const struct sin_event *changelist, int nchanges,
+  struct sin_event *eventlist, int nevents, const struct timespec *timeout);
+
 #endif /* _LIBSINET_H_ */
