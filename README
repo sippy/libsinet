@@ -1,0 +1,9 @@
+This is libsinet, lightweight userland implementation of the UDP/IPv4 stack
+designed to plug into the netmap framework.
+
+Some of the desing objectives for this code:
+ - multithread-safe, multithread-optimized
+ - provably small CPU run-time overhead
+ - high-PPS optimized
+ - as close as socket(2) API as possible
+ - UDP/layerII initially, TCP in mind
