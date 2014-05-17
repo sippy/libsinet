@@ -28,15 +28,29 @@
 #ifndef _LIBSINET_INTERNAL_H_
 #define _LIBSINET_INTERNAL_H_
 
+#define	_SIN_TYPE_SOCKET	4061681943
+#define	_SIN_TYPE_ADDR		489855194
+#define	_SIN_TYPE_QUEUE		4294967296
+#define	_SIN_TYPE_EVENT		3336537370
+
 struct sin_addr {
+    unsigned int sin_type;
     struct sockaddr *addr;
     socklen_t addrlen;
 };
 
 struct sin_socket {
+    unsigned int sin_type;
     struct sin_addr *dst;
     struct sin_addr *src;
     int last_errno;
 };
+
+struct sin_queue {
+    unsigned int sin_type;
+};
+
+#define	SIN_TYPE_ASSERT(sin_struct, model_type)	\
+  assert((sin_struct)->sin_type == (model_type))
 
 #endif /* _LIBSINET_INTERNAL_H_ */

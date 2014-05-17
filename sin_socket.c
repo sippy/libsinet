@@ -50,6 +50,7 @@ sin_socket(int domain, int type, int protocol)
         return (NULL);
     }
     memset(ssp, '\0', sizeof(struct sin_socket));
+    ssp->sin_type = _SIN_TYPE_SOCKET;
 
     return ((void *)ssp);
 }

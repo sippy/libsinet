@@ -27,6 +27,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,9 +49,11 @@ sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen)
             _sin_set_errno(ssp, ENOMEM);
             return (-1);
         }
+        ssp->src->sin_type = _SIN_TYPE_ADDR;
         ssp->src->addr = (struct sockaddr *)((char *)ssp->src + 
           sizeof(struct sin_addr));
     } else if (addrlen > ssp->src->addrlen) {
+        SIN_TYPE_ASSERT(ssp->src, _SIN_TYPE_ADDR);
         saddr = realloc(ssp->src, sizeof(struct sin_addr) + addrlen);
         if (saddr == NULL) {
             _sin_set_errno(ssp, ENOMEM);

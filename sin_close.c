@@ -27,6 +27,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <assert.h>
 #include <stdlib.h>
 
 #include "libsinet.h"
@@ -38,6 +39,20 @@ sin_close(void *s)
     struct sin_socket *ssp;
 
     ssp = (struct sin_socket *)s;
+    SIN_TYPE_ASSERT(ssp, _SIN_TYPE_SOCKET);
+
+    if (ssp->src != NULL) {
+        SIN_TYPE_ASSERT(ssp->src, _SIN_TYPE_ADDR);
+        ssp->src->sin_type = ~ssp->src->sin_type;
+        free(ssp->src);
+    }
+    if (ssp->dst != NULL) {
+        SIN_TYPE_ASSERT(ssp->dst, _SIN_TYPE_ADDR);
+        ssp->dst->sin_type = ~ssp->dst->sin_type;
+        free(ssp->dst);
+    }
+
+    ssp->sin_type = ~ssp->sin_type;
     free(ssp);
 
     return (0);
