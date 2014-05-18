@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libsinet.h"
+#include "include/libsinet.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
 

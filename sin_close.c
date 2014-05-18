@@ -30,7 +30,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "libsinet.h"
+#include "include/libsinet.h"
 #include "libsinet_internal.h"
 
 int
