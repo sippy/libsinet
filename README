@@ -5,5 +5,5 @@ Some of the desing objectives for this code:
  - multithread-safe, multithread-optimized
  - provably small CPU run-time overhead
  - high-PPS optimized
- - as close as socket(2) API as possible
- - UDP/layerII initially, TCP in mind
+ - as close as socket(2)/kqueue(2) API as possible
+ - UDP/IPv4/layerII initially, IPv6 / TCP in mind
