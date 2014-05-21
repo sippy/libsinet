@@ -28,6 +28,8 @@
 #ifndef _LIBSINET_H_
 #define _LIBSINET_H_
 
+void *sin_init(const char *ifname);
+
 void *sin_socket(int domain, int type, int protocol);
 int sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen);
 int sin_connect(void *s, const struct sockaddr *name, socklen_t namelen);

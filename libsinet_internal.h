@@ -28,6 +28,7 @@
 #ifndef _LIBSINET_INTERNAL_H_
 #define _LIBSINET_INTERNAL_H_
 
+#define	_SIN_TYPE_SINSTANCE	693750532
 #define	_SIN_TYPE_SOCKET	4061681943
 #define	_SIN_TYPE_ADDR		489855194
 #define	_SIN_TYPE_QUEUE		1319882625
@@ -49,6 +50,8 @@ struct sin_socket {
 struct sin_queue {
     unsigned int sin_type;
 };
+
+struct sin_stance;
 
 #define	SIN_TYPE_ASSERT(sin_struct, model_type)	\
   assert((sin_struct)->sin_type == (model_type))
