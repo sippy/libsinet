@@ -37,7 +37,7 @@
 #include "sin_errno.h"
 
 int
-sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen)
+sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen, int *e)
 {
     struct sin_socket *ssp;
     struct sin_addr *saddr;
@@ -46,7 +46,7 @@ sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen)
     if (ssp->src == NULL) {
         ssp->src = malloc(sizeof(struct sin_addr) + addrlen);
         if (ssp->src == NULL) {
-            _sin_set_errno(ssp, ENOMEM);
+            _SET_ERR(e, ENOMEM);
             return (-1);
         }
         ssp->src->sin_type = _SIN_TYPE_ADDR;
@@ -56,7 +56,7 @@ sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen)
         SIN_TYPE_ASSERT(ssp->src, _SIN_TYPE_ADDR);
         saddr = realloc(ssp->src, sizeof(struct sin_addr) + addrlen);
         if (saddr == NULL) {
-            _sin_set_errno(ssp, ENOMEM);
+            _SET_ERR(e, ENOMEM);
             return (-1);
         }
         ssp->src = saddr;

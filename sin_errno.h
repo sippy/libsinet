@@ -28,7 +28,6 @@
 #ifndef _SIN_ERRNO_H_
 #define _SIN_ERRNO_H_
 
-void _sin_set_errno(struct sin_socket *, int);
-void _sin_set_gerrno(int);
+#define _SET_ERR(e, err) {if ((e) != NULL) { *(e) = err; }}
 
 #endif /* _SIN_ERRNO_H_ */

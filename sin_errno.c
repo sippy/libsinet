@@ -31,6 +31,7 @@
 #include "libsinet_internal.h"
 #include "sin_errno.h"
 
+#if 0
 void
 _sin_set_errno(struct sin_socket *ssp, int sin_errno)
 {
@@ -47,3 +48,4 @@ _sin_set_gerrno(int sin_errno)
     /* Save errno to the TLS here */
     last_errno = sin_errno;
 }
+#endif

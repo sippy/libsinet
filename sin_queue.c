@@ -9,13 +9,13 @@
 #include "sin_errno.h"
 
 void *
-sin_queue(void)
+sin_queue(int *e)
 {
     struct sin_queue *sqp;
 
     sqp = malloc(sizeof(struct sin_queue));
     if (sqp == NULL) {
-        _sin_set_gerrno(ENOMEM);
+        _SET_ERR(e, ENOMEM);
         return (NULL);
     }
     memset(sqp, '\0', sizeof(struct sin_queue));

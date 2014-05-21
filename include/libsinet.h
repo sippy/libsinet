@@ -28,22 +28,23 @@
 #ifndef _LIBSINET_H_
 #define _LIBSINET_H_
 
-void *sin_init(const char *ifname);
+void *sin_init(const char *ifname, int *sin_err);
 
-void *sin_socket(int domain, int type, int protocol);
-int sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen);
-int sin_connect(void *s, const struct sockaddr *name, socklen_t namelen);
+void *sin_socket(void *sin_stance, int domain, int type, int protocol, int *sin_err);
+int sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen, int *sin_err);
+int sin_connect(void *s, const struct sockaddr *name, socklen_t namelen, int *sin_err);
 ssize_t sin_sendto(void *s, const void *msg, size_t len, int flags,
-  const struct sockaddr *to, socklen_t tolen);
+  const struct sockaddr *to, socklen_t tolen, int *sin_err);
 ssize_t sin_recvfrom(void *s, void * restrict buf, size_t len, int flags,
-  struct sockaddr * restrict from, socklen_t * restrict fromlen);
+  struct sockaddr * restrict from, socklen_t * restrict fromlen, int *sin_err);
 int sin_close(void *s);
 
 struct sin_event;
 struct timespec;
 
-void *sin_queue(void);
+void *sin_queue(int *sin_err);
 int sin_event(void *q, const struct sin_event *changelist, int nchanges,
-  struct sin_event *eventlist, int nevents, const struct timespec *timeout);
+  struct sin_event *eventlist, int nevents, const struct timespec *timeout,
+  int *sin_err);
 
 #endif /* _LIBSINET_H_ */

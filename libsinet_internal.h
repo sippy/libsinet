@@ -40,20 +40,24 @@ struct sin_addr {
     socklen_t addrlen;
 };
 
+struct sin_stance;
+
 struct sin_socket {
     unsigned int sin_type;
+    unsigned int sin_nref;
     struct sin_addr *dst;
     struct sin_addr *src;
     int last_errno;
+    struct sin_stance *sip;
 };
 
 struct sin_queue {
     unsigned int sin_type;
 };
 
-struct sin_stance;
-
 #define	SIN_TYPE_ASSERT(sin_struct, model_type)	\
   assert((sin_struct)->sin_type == (model_type))
+#define SIN_INCREF(sin_struct) (sin_struct)->sin_nref++
+#define SIN_DECREF(sin_struct) (sin_struct)->sin_nref--
 
 #endif /* _LIBSINET_INTERNAL_H_ */

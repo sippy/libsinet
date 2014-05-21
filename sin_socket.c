@@ -34,23 +34,49 @@
 #include "include/libsinet.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
+#include "sin_stance.h"
 
-void *
-sin_socket(int domain, int type, int protocol)
+static inline struct sin_stance *
+_sip_incref(struct sin_stance *sip)
 {
-    struct sin_socket *ssp;
 
-    if (domain != PF_INET || type != SOCK_DGRAM || protocol != 0) {
-        _sin_set_gerrno(EPROTONOSUPPORT);
+    SIN_INCREF(sip);
+    if (sip->sin_nref == 1) {
+        SIN_DECREF(sip);
         return (NULL);
     }
+    return (sip);
+}
+
+void *
+sin_socket(void *sin_stance, int domain, int type, int protocol, int *e)
+{
+    struct sin_socket *ssp;
+    struct sin_stance *sip;
+
+    sip = (struct sin_stance *)sin_stance;
+    sip = _sip_incref(sip);
+    if (sip == NULL) {
+        _SET_ERR(e, EINVAL);
+        return (NULL);
+    }
+
+    if (domain != PF_INET || type != SOCK_DGRAM || protocol != 0) {
+        _SET_ERR(e, EPROTONOSUPPORT);
+        SIN_DECREF(sip);
+        return (NULL);
+    }
+
     ssp = malloc(sizeof(struct sin_socket));
     if (ssp == NULL) {
-        _sin_set_gerrno(ENOMEM);
+        _SET_ERR(e, ENOMEM);
+        SIN_DECREF(sip);
         return (NULL);
     }
     memset(ssp, '\0', sizeof(struct sin_socket));
     ssp->sin_type = _SIN_TYPE_SOCKET;
+    ssp->sip = sip;
 
+    SIN_INCREF(ssp);
     return ((void *)ssp);
 }
