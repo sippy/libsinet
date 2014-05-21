@@ -5,5 +5,19 @@ Some of the desing objectives for this code:
  - multithread-safe, multithread-optimized
  - provably small CPU run-time overhead
  - high-PPS optimized
- - as close as socket(2)/kqueue(2) API as possible
+ - as close as socket(2)/kqueue(2) API (aka "netold") as possible
  - UDP/IPv4/layerII initially, IPv6 / TCP in mind
+
+Some of the major differences between libsinet and netold:
+ - Void pointer is used as an object descriptor instead of int;
+ - error reporting is performed into user supplied int buffer,
+   user has an option to ignore that by providing NULL pointer instead;
+ - to facilitate zero-copying, all i/o is performed on library-managed 
+   buffers linked directly into kernel rings. Fixed and limited number
+   of those buffers is allocated during the sin_init() call and the
+   task of application is to use those wisely, making sure that each
+   each buffer produced by the sin_recv() call is either going to be
+   consumed by the sin_send() method, or recycled by invoking
+   sin_pkt_release(). If application needs more packets for sending
+   the data out than it gets out of sin_recv(), additional packets
+   may be produced by sin_pkg_alloc()
