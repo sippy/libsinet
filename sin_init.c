@@ -16,6 +16,7 @@
 #include "sin_errno.h"
 #include "sin_stance.h"
 #include "sin_pkt_zone.h"
+#include "sin_rx_thread.h"
 
 void *
 sin_init(const char *ifname, int *e)
@@ -64,10 +65,16 @@ sin_init(const char *ifname, int *e)
     if (sip->rx_free == NULL) {
         goto er_undo_2;
     }
+    sip->rx_thread = sin_rx_thread_ctor(sip, e);
+    if (sip->rx_thread == NULL) {
+        goto er_undo_3;
+    }
 
     SIN_INCREF(sip);
     return (void *)sip;
 
+er_undo_3:
+    sin_pkt_zone_dtor(sip->rx_free);
 er_undo_2:
     sin_pkt_zone_dtor(sip->tx_free);
 er_undo_1:
