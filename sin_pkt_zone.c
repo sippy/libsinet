@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include "sin_type.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
 #include "sin_pkt.h"
@@ -13,7 +14,7 @@
 struct sin_pkt;
 
 struct sin_pkt_zone {
-    unsigned int sin_type;
+    struct sin_type t;
     struct sin_pkt **first;
     struct sin_pkt **last;
     struct sin_pkt **curr;
@@ -58,7 +59,7 @@ sin_pkt_zone_ctor(struct netmap_ring *ring, int *e)
         free(spzp);
         return (NULL);
     }
-    spzp->sin_type = _SIN_TYPE_PKT_ZONE;
+    SIN_TYPE_SET(spzp, _SIN_TYPE_PKT_ZONE);
     spzp->curr = spzp->first - 1;
     spzp->last = spzp->first + ring->num_slots - 1;
 

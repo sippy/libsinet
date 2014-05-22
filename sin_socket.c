@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "include/libsinet.h"
+#include "sin_type.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
 #include "sin_stance.h"
@@ -74,7 +75,7 @@ sin_socket(void *sin_stance, int domain, int type, int protocol, int *e)
         return (NULL);
     }
     memset(ssp, '\0', sizeof(struct sin_socket));
-    ssp->sin_type = _SIN_TYPE_SOCKET;
+    SIN_TYPE_SET(ssp, _SIN_TYPE_SOCKET);
     ssp->sip = sip;
 
     SIN_INCREF(ssp);

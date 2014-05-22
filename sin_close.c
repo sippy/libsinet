@@ -31,6 +31,7 @@
 #include <stdlib.h>
 
 #include "include/libsinet.h"
+#include "sin_type.h"
 #include "libsinet_internal.h"
 
 int
@@ -43,16 +44,16 @@ sin_close(void *s)
 
     if (ssp->src != NULL) {
         SIN_TYPE_ASSERT(ssp->src, _SIN_TYPE_ADDR);
-        ssp->src->sin_type = ~ssp->src->sin_type;
+        ssp->src->t.sin_type = ~ssp->src->t.sin_type;
         free(ssp->src);
     }
     if (ssp->dst != NULL) {
         SIN_TYPE_ASSERT(ssp->dst, _SIN_TYPE_ADDR);
-        ssp->dst->sin_type = ~ssp->dst->sin_type;
+        ssp->dst->t.sin_type = ~ssp->dst->t.sin_type;
         free(ssp->dst);
     }
 
-    ssp->sin_type = ~ssp->sin_type;
+    ssp->t.sin_type = ~ssp->t.sin_type;
     free(ssp);
 
     return (0);

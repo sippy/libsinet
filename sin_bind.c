@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "sin_type.h"
 #include "include/libsinet.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
@@ -49,7 +50,7 @@ sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen, int *e)
             _SET_ERR(e, ENOMEM);
             return (-1);
         }
-        ssp->src->sin_type = _SIN_TYPE_ADDR;
+        SIN_TYPE_SET(ssp->src, _SIN_TYPE_ADDR);
         ssp->src->addr = (struct sockaddr *)((char *)ssp->src + 
           sizeof(struct sin_addr));
     } else if (addrlen > ssp->src->addrlen) {

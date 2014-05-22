@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "sin_type.h"
 #include "include/libsinet.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
@@ -28,7 +29,7 @@ sin_init(const char *ifname, int *e)
         return (NULL);
     }
     memset(sip, '\0', sizeof(struct sin_stance));
-    sip->sin_type = _SIN_TYPE_SINSTANCE;
+    SIN_TYPE_SET(sip, _SIN_TYPE_SINSTANCE);
     sip->netmap_fd = open("/dev/netmap", O_RDWR);
     if (sip->netmap_fd < 0) {
         _SET_ERR(e, errno);

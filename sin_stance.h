@@ -3,7 +3,7 @@ struct sin_pkt;
 struct sin_pkt_zone;
 
 struct sin_stance {
-    unsigned int sin_type;
+    struct sin_type t;
     unsigned int sin_nref;
     int netmap_fd;
     void *mem;

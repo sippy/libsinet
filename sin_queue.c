@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "sin_type.h"
 #include "include/libsinet.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
@@ -19,6 +20,6 @@ sin_queue(int *e)
         return (NULL);
     }
     memset(sqp, '\0', sizeof(struct sin_queue));
-    sqp->sin_type = _SIN_TYPE_QUEUE;
+    SIN_TYPE_SET(sqp, _SIN_TYPE_QUEUE);
     return ((void *)sqp);
 }
