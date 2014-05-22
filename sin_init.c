@@ -55,11 +55,11 @@ sin_init(const char *ifname, int *e)
     printf("number of tx slots: %d available slots: %d\n", sip->tx_ring->num_slots, sip->tx_ring->tail - sip->rx_ring->head);
     printf("number of rx slots: %d available slots: %d\n", sip->rx_ring->num_slots, sip->rx_ring->tail - sip->rx_ring->head);
 #endif
-    sip->tx_free = sin_pkt_zone_ctor(sip->tx_ring->num_slots, e);
+    sip->tx_free = sin_pkt_zone_ctor(sip->tx_ring, e);
     if (sip->tx_free == NULL) {
         goto er_undo_1;
     }
-    sip->rx_free = sin_pkt_zone_ctor(sip->rx_ring->num_slots, e);
+    sip->rx_free = sin_pkt_zone_ctor(sip->rx_ring, e);
     if (sip->rx_free == NULL) {
         goto er_undo_2;
     }

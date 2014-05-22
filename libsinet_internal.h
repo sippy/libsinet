@@ -34,6 +34,7 @@
 #define	_SIN_TYPE_QUEUE		1319882625
 #define	_SIN_TYPE_EVENT		3336537370
 #define	_SIN_TYPE_PKT_ZONE	720778432
+#define	_SIN_TYPE_PKT		639956139
 
 struct sin_addr {
     unsigned int sin_type;
