@@ -18,6 +18,7 @@ struct sin_type_linkable {
 #define _SIN_TYPE_PKT           639956139
 #define _SIN_TYPE_WI_QUEUE      1938993589
 #define _SIN_TYPE_WRK_THREAD    1612654994
+#define _SIN_TYPE_SIGNAL        229112560
 
 #define SIN_TYPE_ASSERT(ssp, model_type) \
   assert((ssp)->t.sin_type == (model_type))
