@@ -18,6 +18,8 @@ NO_PROFILE?=	YES
 
 WARNS?=		4
 
+CLEANFILES+=	test
+
 test: lib${LIB}.a test.c
 	cc ${CFLAGS} -I. ${LDADD} test.c -o test libsinet.a
 

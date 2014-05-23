@@ -31,7 +31,7 @@ struct sin_rx_thread
 static struct sin_pkt *
 get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 {
-     u_int i, idx;
+     int i, idx;
      struct sin_pkt *pkt;
 
      if (nm_ring_empty(ring)) {
@@ -40,14 +40,45 @@ get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
      }
      i = ring->cur;
      pkt = pzone->first[i];
+     assert(pkt->zone_idx == i);
+     pzone->first[i] = NULL;
      idx = ring->slot[i].buf_idx;
 
      pkt->buf = (u_char *)NETMAP_BUF(ring, idx);
      pkt->ts = ring->ts;
      pkt->len = ring->slot[i].len;
      ring->cur = nm_ring_next(ring, i);
-     ring->head = ring->cur;
-     return pkt;
+     return (pkt);
+}
+
+static inline void
+spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
+{
+     unsigned int i, new_head;
+
+#ifdef SIN_DEBUG
+     printf("spin_ring: enter: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
+       ring->head, ring->cur, ring->tail);
+#endif
+     new_head = ring->head;
+     for (i = ring->head; i != ring->cur; i = nm_ring_next(ring, i)) {
+         if (pzone->first[i] == NULL) {
+             break;
+         }
+         new_head = i;
+     }
+     ring->head = new_head;
+#ifdef SIN_DEBUG
+     printf("spin_ring: exit: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
+       ring->head, ring->cur, ring->tail);
+#endif
+}
+
+static inline void
+return_pkt(struct sin_pkt *pkt, struct sin_pkt_zone *pzone)
+{
+
+    pzone->first[pkt->zone_idx] = pkt;
 }
 
 static void
@@ -67,8 +98,10 @@ sin_rx_thread(struct sin_rx_thread *srtp)
             printf("got packet, length %d, icmp = %d!\n", pkt->len,
               sin_ip4_icmp_taste(pkt));
 #endif
+            return_pkt(pkt, srtp->sip->rx_free);
             continue;
         }
+        spin_ring(rx_ring, srtp->sip->rx_free);
         if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
             break;
         }

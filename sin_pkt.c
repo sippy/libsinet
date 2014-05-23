@@ -10,7 +10,7 @@
 #include "sin_pkt.h"
 
 struct sin_pkt *
-sin_pkt_ctor(struct netmap_slot *nm_slot, int *e)
+sin_pkt_ctor(int zone_idx, int *e)
 {
     struct sin_pkt *pkt;
 
@@ -21,7 +21,7 @@ sin_pkt_ctor(struct netmap_slot *nm_slot, int *e)
     }
     memset(pkt, '\0', sizeof(struct sin_pkt));
     SIN_TYPE_SET(pkt, _SIN_TYPE_PKT);
-    pkt->nm_slot = nm_slot;
+    pkt->zone_idx = zone_idx;
 
     return (pkt);
 }

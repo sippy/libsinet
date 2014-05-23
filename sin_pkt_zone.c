@@ -19,7 +19,7 @@ sin_pkt_zone_fill_from_ring(struct sin_pkt **pkts, struct netmap_ring *ring, int
     struct sin_pkt *pkt;
 
     for (i = 0; i < (int)ring->num_slots; i++)  {
-        pkt = sin_pkt_ctor(&ring->slot[i], e);
+        pkt = sin_pkt_ctor(i, e);
         if (pkt == NULL) {
             for (j = i - 1; j >= 0; j--) {
                 sin_pkt_dtor(pkts[j]);
