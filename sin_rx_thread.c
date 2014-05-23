@@ -8,10 +8,9 @@
 #include "sin_type.h"
 #include "sin_errno.h"
 #include "sin_stance.h"
+#include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
 #include "sin_rx_thread.h"
-
-struct sin_wi_queue;
 
 struct sin_rx_thread
 {
@@ -46,6 +45,11 @@ sin_rx_thread_ctor(struct sin_stance *sip, int *e)
     memset(srtp, '\0', sizeof(struct sin_rx_thread));
     SIN_TYPE_SET(srtp, _SIN_TYPE_WRK_THREAD);
     srtp->sip = sip;
+    srtp->control_queue = sin_wi_queue_ctor(1, e, "rx_thread control");
+    if (srtp->control_queue == NULL) {
+        free(srtp);
+        return (NULL);
+    }
     rval = pthread_create(&srtp->t.tid, NULL, (void *(*)(void *))&sin_rx_thread, srtp);
     if (rval != 0) {
         free(srtp);
