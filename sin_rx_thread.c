@@ -90,13 +90,16 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     struct netmap_ring *rx_ring;
     struct pollfd fds;
     struct sin_pkt *pkt;
+    int need_spin;
 
     rx_ring = srtp->sip->rx_ring;
     fds.fd = srtp->sip->netmap_fd;
     fds.events = POLLIN;
     for (;;) {
         poll(&fds, 1, 10);
+        need_spin = 0;
         while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
+            need_spin = 1;
 #ifdef SIN_DEBUG
             printf("got packet, length %d, icmp = %d!\n", pkt->len,
               sin_ip4_icmp_taste(pkt));
@@ -104,7 +107,9 @@ sin_rx_thread(struct sin_rx_thread *srtp)
             return_pkt(pkt, srtp->sip->rx_free);
             continue;
         }
-        spin_ring(rx_ring, srtp->sip->rx_free);
+        if (need_spin != 0) {
+            spin_ring(rx_ring, srtp->sip->rx_free);
+        }
         if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
             break;
         }
