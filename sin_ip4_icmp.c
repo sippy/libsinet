@@ -2,6 +2,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+
+#undef SIN_DEBUG
+
 #ifdef SIN_DEBUG
 #include <stdio.h>
 #endif
@@ -41,9 +44,9 @@ sin_ip4_icmp_taste(struct sin_pkt *pkt)
     }
     p = (struct ip4_icmp_en10t *)pkt->buf;
 #ifdef SIN_DEBUG
-    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, icmp_type %d\n",
+    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, icmp_type %hhu\n",
       pkt, p->ether_type, p->ip4_icmp.iphdr.ip_v, p->ip4_icmp.iphdr.ip_p,
-      (int)((char *)&p->ip4_icmp.icmphdr.icmp_type - (char *)p));
+      p->ip4_icmp.icmphdr.icmp_type);
 #endif
     if (p->ether_type != htons(0x0800)) {
         return (0);
@@ -54,7 +57,7 @@ sin_ip4_icmp_taste(struct sin_pkt *pkt)
     if (p->ip4_icmp.iphdr.ip_p != 0x1) {
         return (0);
     }
-    if (p->ip4_icmp.icmphdr.icmp_type != 0x0) {
+    if (p->ip4_icmp.icmphdr.icmp_type != 0x8) {
         return (0);
     }
     return (1);
