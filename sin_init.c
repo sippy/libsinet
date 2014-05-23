@@ -17,6 +17,7 @@
 #include "sin_stance.h"
 #include "sin_pkt_zone.h"
 #include "sin_rx_thread.h"
+#include "sin_tx_thread.h"
 
 void *
 sin_init(const char *ifname, int *e)
@@ -69,13 +70,19 @@ sin_init(const char *ifname, int *e)
     if (sip->rx_thread == NULL) {
         goto er_undo_3;
     }
+    sip->tx_thread = sin_tx_thread_ctor(sip, e);
+    if (sip->tx_thread == NULL) {
+        goto er_undo_4;
+    }
 
     SIN_INCREF(sip);
     return (void *)sip;
 
 #if 0
-er_undo_4:
+er_undo_5:
+    sin_tx_thread_dtor(sip->tx_thread);
 #endif
+er_undo_4:
     sin_rx_thread_dtor(sip->rx_thread);
 er_undo_3:
     sin_pkt_zone_dtor(sip->rx_free);
