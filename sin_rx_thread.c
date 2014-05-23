@@ -1,6 +1,7 @@
 #include <net/netmap_user.h>
 #include <assert.h>
 #include <errno.h>
+#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <sched.h>
@@ -12,6 +13,8 @@
 
 #include "sin_type.h"
 #include "sin_errno.h"
+#include "sin_pkt.h"
+#include "sin_pkt_zone.h"
 #include "sin_stance.h"
 #include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
@@ -24,14 +27,46 @@ struct sin_rx_thread
     struct sin_stance *sip;
 };
 
+static struct sin_pkt *
+get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
+{
+     u_int i, idx;
+     struct sin_pkt *pkt;
+
+     if (nm_ring_empty(ring)) {
+         /* Nothing found */
+         return (NULL);
+     }
+     i = ring->cur;
+     pkt = pzone->first[i];
+     idx = ring->slot[i].buf_idx;
+
+     pkt->buf = (u_char *)NETMAP_BUF(ring, idx);
+     pkt->ts = ring->ts;
+     pkt->len = ring->slot[i].len;
+     ring->cur = nm_ring_next(ring, i);
+     ring->head = ring->cur;
+     return pkt;
+}
+
 static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
     struct netmap_ring *rx_ring;
+    struct pollfd fds;
+    struct sin_pkt *pkt;
 
     rx_ring = srtp->sip->rx_ring;
+    fds.fd = srtp->sip->netmap_fd;
+    fds.events = POLLIN;
     for (;;) {
-        sched_yield();
+        poll(&fds, 1, 10);
+        while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
+#ifdef SIN_DEBUG
+            printf("got packet, length %d!\n", pkt->len);
+#endif
+            continue;
+        }
         if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
             break;
         }

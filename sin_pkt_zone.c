@@ -12,13 +12,6 @@
 
 struct sin_pkt;
 
-struct sin_pkt_zone {
-    struct sin_type t;
-    struct sin_pkt **first;
-    struct sin_pkt **last;
-    struct sin_pkt **curr;
-};
-
 static int
 sin_pkt_zone_fill_from_ring(struct sin_pkt **pkts, struct netmap_ring *ring, int *e)
 {
