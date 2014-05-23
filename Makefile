@@ -9,7 +9,7 @@ SRCS=		include/libsinet.h sin_close.c libsinet_internal.h sin_socket.c \
 		sin_init.c sin_pkt_zone.c sin_pkt_zone.h sin_pkt.c sin_pkt.h \
 		sin_type.h sin_wrk_thread.h sin_rx_thread.c sin_stance.h \
 		sin_wi_queue.c sin_wi_queue.h sin_signal.c sin_signal.h \
-		sin_wrk_thread.c
+		sin_wrk_thread.c sin_tx_thread.c sin_tx_thread.h
 
 LDADD=		-l${LIBTHREAD}
 
