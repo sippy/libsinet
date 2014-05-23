@@ -70,9 +70,14 @@ sin_init(const char *ifname, int *e)
         goto er_undo_3;
     }
 
+    _SET_ERR(e, EBUSY);
+    goto er_undo_4;
+
     SIN_INCREF(sip);
     return (void *)sip;
 
+er_undo_4:
+    sin_rx_thread_dtor(sip->rx_thread);
 er_undo_3:
     sin_pkt_zone_dtor(sip->rx_free);
 er_undo_2:
