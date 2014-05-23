@@ -85,6 +85,10 @@ sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp)
     sin_wi_queue_put_item(swtp->sigterm, swtp->ctrl_queue);
     pthread_join(swtp->tid, NULL);
     sin_signal_dtor(swtp->sigterm);
+    /* Drain ctrl queue */
+    while (sin_wrk_thread_check_ctrl(swtp) != -1) {
+        continue;
+    }
     sin_wi_queue_dtor(swtp->ctrl_queue);
     free(swtp->tname);
 }
