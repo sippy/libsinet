@@ -17,6 +17,6 @@ NO_PROFILE?=	YES
 WARNS?=		4
 
 test: lib${LIB}.a test.c
-	cc ${CFLAGS} -I. test.c -o test libsinet.a
+	cc ${CFLAGS} -I. ${LDADD} test.c -o test libsinet.a
 
 .include <bsd.lib.mk>
