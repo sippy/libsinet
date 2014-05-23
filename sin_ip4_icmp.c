@@ -2,7 +2,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#ifdef SIN_DEBUG
+#include <stdio.h>
+#endif
 
+#include "sin_type.h"
+#include "sin_pkt.h"
 #include "sin_ip4_icmp.h"
 
 struct icmphdr {
@@ -27,14 +32,19 @@ struct ip4_icmp_en10t {
 #define SIN_IP4_ICMP_MINLEN	(14 + 20 + 16)
 
 int
-sin_ip4_icmp_taste(char *buf, int buflen)
+sin_ip4_icmp_taste(struct sin_pkt *pkt)
 {
     struct ip4_icmp_en10t *p;
 
-    if (buflen < SIN_IP4_ICMP_MINLEN) {
+    if (pkt->len < SIN_IP4_ICMP_MINLEN) {
         return (0);
     }
-    p = (struct ip4_icmp_en10t *)buf;
+    p = (struct ip4_icmp_en10t *)pkt->buf;
+#ifdef SIN_DEBUG
+    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, icmp_type %d\n",
+      pkt, p->ether_type, p->ip4_icmp.iphdr.ip_v, p->ip4_icmp.iphdr.ip_p,
+      (int)((char *)&p->ip4_icmp.icmphdr.icmp_type - (char *)p));
+#endif
     if (p->ether_type != htons(0x0800)) {
         return (0);
     }

@@ -3,6 +3,7 @@
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <include/libsinet.h>
 
@@ -17,6 +18,8 @@ main(int argc, char **argv)
     if (sinp == NULL) {
         errx(1, "sin_init: %s", strerror(sin_err));
     }
+
+    sleep(60);
 
     exit(0);
 }

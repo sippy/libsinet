@@ -19,6 +19,7 @@
 #include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
 #include "sin_rx_thread.h"
+#include "sin_ip4_icmp.h"
 
 struct sin_rx_thread
 {
@@ -63,7 +64,8 @@ sin_rx_thread(struct sin_rx_thread *srtp)
         poll(&fds, 1, 10);
         while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
 #ifdef SIN_DEBUG
-            printf("got packet, length %d!\n", pkt->len);
+            printf("got packet, length %d, icmp = %d!\n", pkt->len,
+              sin_ip4_icmp_taste(pkt));
 #endif
             continue;
         }
