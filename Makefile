@@ -20,4 +20,9 @@ WARNS?=		4
 test: lib${LIB}.a test.c
 	cc ${CFLAGS} -I. ${LDADD} test.c -o test libsinet.a
 
+includepolice:
+	for file in ${SRCS}; do \
+	  python misc/includepolice.py $${file} || sleep 5; \
+	done
+
 .include <bsd.lib.mk>
