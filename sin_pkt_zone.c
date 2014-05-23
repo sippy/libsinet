@@ -1,5 +1,4 @@
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <net/netmap_user.h>
 #include <assert.h>
 #include <errno.h>

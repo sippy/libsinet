@@ -13,7 +13,6 @@
 #include "sin_type.h"
 #include "sin_errno.h"
 #include "sin_stance.h"
-#include "sin_signal.h"
 #include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
 #include "sin_rx_thread.h"
