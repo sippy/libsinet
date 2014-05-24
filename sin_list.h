@@ -24,3 +24,5 @@ sin_list_append(struct sin_list *lst, void *p)
 }
 
 #define SIN_LIST_RESET(lst) {(lst)->head = (lst)->tail = NULL; (lst)->len = 0;}
+#define SIN_LIST_HEAD(lst)  (void *)((lst)->head)
+#define SIN_LIST_IS_EMPTY(slp) ((slp)->len == 0)
