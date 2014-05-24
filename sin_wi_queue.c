@@ -192,9 +192,15 @@ sin_wi_queue_get_items(struct sin_wi_queue *queue,  struct sin_list *lst,
             return (NULL);
         }
     }
-    lst->head = queue->head;
-    lst->tail = queue->tail;
-    lst->len = queue->length;
+    if (lst->head == NULL) {
+        lst->head = queue->head;
+        lst->tail = queue->tail;
+        lst->len = queue->length;
+    } else {
+        lst->tail->sin_next = queue->head;
+        lst->tail = queue->tail;
+        lst->len += queue->length;
+    }
     queue->length = 0;
     queue->head = queue->tail = NULL;
     pthread_mutex_unlock(&queue->mutex);
