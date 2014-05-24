@@ -29,6 +29,7 @@
 #define _LIBSINET_H_
 
 void *sin_init(const char *ifname, int *sin_err);
+void sin_destroy(void *sin_stance);
 
 void *sin_socket(void *sin_stance, int domain, int type, int protocol, int *sin_err);
 int sin_bind(void *s, const struct sockaddr *addr, socklen_t addrlen, int *sin_err);
