@@ -10,7 +10,8 @@ SRCS=		include/libsinet.h sin_close.c libsinet_internal.h sin_socket.c \
 		sin_type.h sin_wrk_thread.h sin_rx_thread.c sin_stance.h \
 		sin_wi_queue.c sin_wi_queue.h sin_signal.c sin_signal.h \
 		sin_wrk_thread.c sin_tx_thread.c sin_tx_thread.h \
-		sin_ip4_icmp.c sin_ip4_icmp.h sin_list.h
+		sin_ip4_icmp.c sin_ip4_icmp.h sin_list.h sin_destroy.c \
+		sin_debug.h
 
 LDADD=		-l${LIBTHREAD}
 
@@ -20,8 +21,8 @@ WARNS?=		4
 
 CLEANFILES+=	test
 
-test: lib${LIB}.a test.c
-	cc ${CFLAGS} -I. ${LDADD} test.c -o test libsinet.a
+test: lib${LIB}.a test.c Makefile
+	cc -O0 -g3 -I. ${LDADD} test.c -o test libsinet.a
 
 includepolice:
 	for file in ${SRCS}; do \
