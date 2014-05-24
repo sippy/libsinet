@@ -21,7 +21,7 @@ sin_pkt_zone_fill_from_ring(struct sin_pkt_zone *spzp,
 
     pkts = spzp->first;
     for (i = 0; i < (int)ring->num_slots; i++)  {
-        pkt = sin_pkt_ctor(spzp, i, e);
+        pkt = sin_pkt_ctor(spzp, i, ring, e);
         if (pkt == NULL) {
             for (j = i - 1; j >= 0; j--) {
                 sin_pkt_dtor(pkts[j]);
