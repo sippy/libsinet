@@ -21,5 +21,7 @@ main(int argc, char **argv)
 
     sleep(60);
 
+    sin_destroy(sinp);
+
     exit(0);
 }
