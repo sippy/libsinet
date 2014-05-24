@@ -36,7 +36,7 @@ sin_wrk_thread_ctor(struct sin_type_wrk_thread *swtp, const char *tname,
         _SET_ERR(e, ENOMEM);
         return (-1);
     }
-    swtp->ctrl_queue = sin_wi_queue_ctor(1, e, "%s control queue", tname);
+    swtp->ctrl_queue = sin_wi_queue_ctor(e, "%s control queue", tname);
     if (swtp->ctrl_queue == NULL) {
         goto er_undo_1;
     }
