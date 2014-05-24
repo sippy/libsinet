@@ -13,13 +13,15 @@
 struct sin_pkt;
 
 static int
-sin_pkt_zone_fill_from_ring(struct sin_pkt **pkts, struct netmap_ring *ring, int *e)
+sin_pkt_zone_fill_from_ring(struct sin_pkt_zone *spzp,
+  struct netmap_ring *ring, int *e)
 {
     int i, j;
-    struct sin_pkt *pkt;
+    struct sin_pkt *pkt, **pkts;
 
+    pkts = spzp->first;
     for (i = 0; i < (int)ring->num_slots; i++)  {
-        pkt = sin_pkt_ctor(i, e);
+        pkt = sin_pkt_ctor(spzp, i, e);
         if (pkt == NULL) {
             for (j = i - 1; j >= 0; j--) {
                 sin_pkt_dtor(pkts[j]);
@@ -47,7 +49,7 @@ sin_pkt_zone_ctor(struct netmap_ring *ring, int *e)
         _SET_ERR(e, ENOMEM);
         return (NULL);
     }
-    if (sin_pkt_zone_fill_from_ring(spzp->first, ring, e) < 0) {
+    if (sin_pkt_zone_fill_from_ring(spzp, ring, e) < 0) {
         free(spzp);
         return (NULL);
     }
