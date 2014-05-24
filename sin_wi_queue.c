@@ -18,13 +18,13 @@ struct sin_wi_queue
     struct sin_type_linkable *tail;
     pthread_cond_t cond;
     pthread_mutex_t mutex;
-    int length;
+    unsigned int nwait;
+    unsigned int length;
     char *name;
-    int qlen;
 };
 
 struct sin_wi_queue *
-sin_wi_queue_ctor(int qlen, int *e, const char *fmt, ...)
+sin_wi_queue_ctor(int *e, const char *fmt, ...)
 {
     struct sin_wi_queue *queue;
     va_list ap;
@@ -37,7 +37,6 @@ sin_wi_queue_ctor(int qlen, int *e, const char *fmt, ...)
     }
     memset(queue, '\0', sizeof(*queue));
     SIN_TYPE_SET(queue, _SIN_TYPE_WI_QUEUE);
-    queue->qlen = qlen;
     if ((eval = pthread_cond_init(&queue->cond, NULL)) != 0) {
         free(queue);
         _SET_ERR(e, eval);
@@ -97,7 +96,7 @@ sin_wi_queue_put_item(void *wi, struct sin_wi_queue *queue)
         fprintf(stderr, "queue(%s): length %d\n", queue->name, queue->length);
 #endif
 
-    if (queue->length % queue->qlen == 0) {
+    if (queue->nwait > 0) {
         /* notify worker thread */
         pthread_cond_signal(&queue->cond);
     }
@@ -120,7 +119,7 @@ sin_wi_queue_put_items(struct sin_list *lst, struct sin_wi_queue *queue)
         queue->length += lst->len;
     }
 
-    if (queue->length % queue->qlen == 0) {
+    if (queue->nwait > 0) {
         /* notify worker thread */
         pthread_cond_signal(&queue->cond);
     }
@@ -140,7 +139,9 @@ sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
             pthread_mutex_unlock(&queue->mutex);
             return (NULL);
         }
+        queue->nwait++;
         pthread_cond_wait(&queue->cond, &queue->mutex);
+        queue->nwait--;
         if (queue->head == NULL && return_on_wake != 0) {
             pthread_mutex_unlock(&queue->mutex);
             return (NULL);
@@ -167,7 +168,9 @@ sin_wi_queue_get_items(struct sin_wi_queue *queue,  struct sin_list *lst,
             pthread_mutex_unlock(&queue->mutex);
             return (NULL);
         }
+        queue->nwait++;
         pthread_cond_wait(&queue->cond, &queue->mutex);
+        queue->nwait--;
         if (queue->head == NULL && return_on_wake != 0) {
             pthread_mutex_unlock(&queue->mutex);
             return (NULL);

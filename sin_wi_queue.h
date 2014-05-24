@@ -4,7 +4,7 @@
 struct sin_wi_queue;
 struct sin_list;
 
-struct sin_wi_queue *sin_wi_queue_ctor(int, int *sin_err,
+struct sin_wi_queue *sin_wi_queue_ctor(int *sin_err,
   const char *format, ...);
 void sin_wi_queue_dtor(struct sin_wi_queue *queue);
 
