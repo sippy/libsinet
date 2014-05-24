@@ -66,12 +66,12 @@ sin_init(const char *ifname, int *e)
     if (sip->rx_free == NULL) {
         goto er_undo_2;
     }
-    sip->rx_thread = sin_rx_thread_ctor(sip, e);
-    if (sip->rx_thread == NULL) {
-        goto er_undo_3;
-    }
     sip->tx_thread = sin_tx_thread_ctor(sip, e);
     if (sip->tx_thread == NULL) {
+        goto er_undo_3;
+    }
+    sip->rx_thread = sin_rx_thread_ctor(sip, e);
+    if (sip->rx_thread == NULL) {
         goto er_undo_4;
     }
 
@@ -80,10 +80,10 @@ sin_init(const char *ifname, int *e)
 
 #if 0
 er_undo_5:
-    sin_tx_thread_dtor(sip->tx_thread);
+    sin_rx_thread_dtor(sip->rx_thread);
 #endif
 er_undo_4:
-    sin_rx_thread_dtor(sip->rx_thread);
+    sin_tx_thread_dtor(sip->tx_thread);
 er_undo_3:
     sin_pkt_zone_dtor(sip->rx_free);
 er_undo_2:
