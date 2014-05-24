@@ -34,7 +34,7 @@ struct sin_rx_thread
 static struct sin_pkt *
 get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 {
-     int i, idx;
+     unsigned int i, idx;
      struct sin_pkt *pkt;
 
      if (nm_ring_empty(ring)) {
