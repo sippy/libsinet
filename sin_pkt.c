@@ -34,4 +34,3 @@ sin_pkt_dtor(struct sin_pkt *pkt)
     SIN_TYPE_ASSERT(pkt, _SIN_TYPE_PKT);
     free(pkt);
 }
-
