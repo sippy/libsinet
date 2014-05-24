@@ -29,3 +29,5 @@ struct sin_type_linkable {
 
 #define SIN_TYPE_IS_LINKABLE(stp)  ((stp)->sin_type == _SIN_TYPE_PKT || \
   (stp)->sin_type == _SIN_TYPE_SIGNAL)
+
+#define SIN_ITER_NEXT(stlp)	((void *)((stlp)->t.sin_next))
