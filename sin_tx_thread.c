@@ -13,6 +13,7 @@
 
 #include "sin_type.h"
 #include "sin_list.h"
+#include "sin_debug.h"
 #include "sin_errno.h"
 #include "sin_stance.h"
 #include "sin_pkt.h"
@@ -52,7 +53,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
                     pkt->t.sin_next = NULL;
                     sin_pkt_zone_ret_pkt(pkt, sttp->sip->rx_free);
                 }
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
 		printf("sin_tx_thread: %d packets returned\n", pkts_out.len);
 #endif
                 SIN_LIST_RESET(&pkts_out);
@@ -84,6 +85,8 @@ sin_tx_thread_ctor(struct sin_stance *sip, int *e)
       (void *(*)(void *))&sin_tx_thread, e) != 0) {
         goto er_undo_2;
     }
+    sin_wrk_thread_notify_on_ctrl(&sttp->t, sttp->outpkt_queue);
+
     return (sttp);
 
 er_undo_2:
