@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "sin_type.h"
+#include "sin_debug.h"
 #include "sin_errno.h"
 #include "sin_signal.h"
 #include "sin_wi_queue.h"
@@ -14,11 +15,11 @@ static void
 sin_wrk_thread_runner(struct sin_type_wrk_thread *swtp)
 {
 
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
     printf("%s has started\n", swtp->tname);
 #endif
     swtp->runner(swtp);
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
     printf("%s has stopped\n", swtp->tname);
 #endif
 }
@@ -79,10 +80,21 @@ sin_wrk_thread_check_ctrl(struct sin_type_wrk_thread *swtp)
 }
 
 void
+sin_wrk_thread_notify_on_ctrl(struct sin_type_wrk_thread *swtp,
+  struct sin_wi_queue *ctrl_notify_queue)
+{
+
+    swtp->ctrl_notify_queue = ctrl_notify_queue;
+}
+
+void
 sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp)
 {
 
     sin_wi_queue_put_item(swtp->sigterm, swtp->ctrl_queue);
+    if (swtp->ctrl_notify_queue != NULL) {
+        sin_wi_queue_pump(swtp->ctrl_notify_queue);
+    }
     pthread_join(swtp->tid, NULL);
     sin_signal_dtor(swtp->sigterm);
     /* Drain ctrl queue */
