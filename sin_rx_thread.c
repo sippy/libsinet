@@ -13,6 +13,7 @@
 
 #include "sin_type.h"
 #include "sin_errno.h"
+#include "sin_list.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
 #include "sin_stance.h"
@@ -84,40 +85,38 @@ return_pkt(struct sin_pkt *pkt, struct sin_pkt_zone *pzone)
     pzone->first[pkt->zone_idx] = pkt;
 }
 
-#define PKTBATCH_APPEND(btch, pkt, len) {len++; if (btch == NULL) { btch = pkt;} else {SIN_TYPE_LINK(pkt, btch); btch = pkt;} }
-
 static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
     struct netmap_ring *rx_ring;
     struct pollfd fds;
     struct sin_pkt *pkt;
-    struct sin_pkt *pkts_icmp;
-    int pkts_icmp_num;
-    int need_spin;
+    struct sin_list pkts_icmp;
+    int need_spin, nready;
 
     rx_ring = srtp->sip->rx_ring;
     fds.fd = srtp->sip->netmap_fd;
     fds.events = POLLIN;
-    pkts_icmp = NULL;
-    pkts_icmp_num = 0;
+    memset(&pkts_icmp, '\0', sizeof(struct sin_list));
     for (;;) {
-        poll(&fds, 1, 10);
-        need_spin = 0;
-        while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
+        nready = poll(&fds, 1, 10);
+        if (nready > 0) {
+            need_spin = 0;
+            while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
 #ifdef SIN_DEBUG
-            printf("got packet, length %d, icmp = %d!\n", pkt->len,
-              sin_ip4_icmp_taste(pkt));
+                printf("got packet, length %d, icmp = %d!\n", pkt->len,
+                  sin_ip4_icmp_taste(pkt));
 #endif
-            if (sin_ip4_icmp_taste(pkt) == 1) {
-                PKTBATCH_APPEND(pkts_icmp, pkt, pkts_icmp_num);
-            } else {
-                need_spin = 1;
-                return_pkt(pkt, srtp->sip->rx_free);
+                if (sin_ip4_icmp_taste(pkt) == 1) {
+                    sin_list_append(&pkts_icmp, pkt);
+                } else {
+                    need_spin = 1;
+                    return_pkt(pkt, srtp->sip->rx_free);
+                }
             }
-        }
-        if (need_spin != 0) {
-            spin_ring(rx_ring, srtp->sip->rx_free);
+            if (need_spin != 0) {
+                spin_ring(rx_ring, srtp->sip->rx_free);
+            }
         }
         if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
             break;
