@@ -10,6 +10,7 @@ void sin_wi_queue_dtor(struct sin_wi_queue *queue);
 
 void sin_wi_queue_put_item(void *wi, struct sin_wi_queue *);
 void sin_wi_queue_put_items(struct sin_list *lst, struct sin_wi_queue *);
+int sin_wi_queue_pump(struct sin_wi_queue *);
 void *sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
   int return_on_wake);
 struct sin_list *sin_wi_queue_get_items(struct sin_wi_queue *queue,

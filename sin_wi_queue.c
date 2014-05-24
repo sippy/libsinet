@@ -127,6 +127,22 @@ sin_wi_queue_put_items(struct sin_list *lst, struct sin_wi_queue *queue)
     pthread_mutex_unlock(&queue->mutex);
 }
 
+int
+sin_wi_queue_pump(struct sin_wi_queue *queue)
+{
+    int nwait;
+
+    pthread_mutex_lock(&queue->mutex);
+    nwait = queue->nwait;
+    if (queue->nwait > 0) {
+        /* notify worker thread */
+        pthread_cond_signal(&queue->cond);
+    }
+
+    pthread_mutex_unlock(&queue->mutex);
+    return (nwait);
+}
+
 void *
 sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
   int return_on_wake)
