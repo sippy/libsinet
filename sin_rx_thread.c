@@ -97,7 +97,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     rx_ring = srtp->sip->rx_ring;
     fds.fd = srtp->sip->netmap_fd;
     fds.events = POLLIN;
-    memset(&pkts_icmp, '\0', sizeof(struct sin_list));
+    SIN_LIST_RESET(&pkts_icmp);
     for (;;) {
         nready = poll(&fds, 1, 10);
         if (nready > 0) {
