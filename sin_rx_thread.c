@@ -84,28 +84,37 @@ return_pkt(struct sin_pkt *pkt, struct sin_pkt_zone *pzone)
     pzone->first[pkt->zone_idx] = pkt;
 }
 
+#define PKTBATCH_APPEND(btch, pkt, len) {len++; if (btch == NULL) { btch = pkt;} else {SIN_TYPE_LINK(pkt, btch); btch = pkt;} }
+
 static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
     struct netmap_ring *rx_ring;
     struct pollfd fds;
     struct sin_pkt *pkt;
+    struct sin_pkt *pkts_icmp;
+    int pkts_icmp_num;
     int need_spin;
 
     rx_ring = srtp->sip->rx_ring;
     fds.fd = srtp->sip->netmap_fd;
     fds.events = POLLIN;
+    pkts_icmp = NULL;
+    pkts_icmp_num = 0;
     for (;;) {
         poll(&fds, 1, 10);
         need_spin = 0;
         while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
-            need_spin = 1;
 #ifdef SIN_DEBUG
             printf("got packet, length %d, icmp = %d!\n", pkt->len,
               sin_ip4_icmp_taste(pkt));
 #endif
-            return_pkt(pkt, srtp->sip->rx_free);
-            continue;
+            if (sin_ip4_icmp_taste(pkt) == 1) {
+                PKTBATCH_APPEND(pkts_icmp, pkt, pkts_icmp_num);
+            } else {
+                need_spin = 1;
+                return_pkt(pkt, srtp->sip->rx_free);
+            }
         }
         if (need_spin != 0) {
             spin_ring(rx_ring, srtp->sip->rx_free);
