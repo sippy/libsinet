@@ -8,6 +8,7 @@
 
 #include "sin_type.h"
 #include "sin_errno.h"
+#include "sin_list.h"
 #include "sin_wi_queue.h"
 
 struct sin_wi_queue
@@ -104,6 +105,29 @@ sin_wi_queue_put_item(void *wi, struct sin_wi_queue *queue)
     pthread_mutex_unlock(&queue->mutex);
 }
 
+void
+sin_wi_queue_put_items(struct sin_list *lst, struct sin_wi_queue *queue)
+{
+
+    pthread_mutex_lock(&queue->mutex);
+    if (queue->head == NULL) {
+        queue->head = lst->head;
+        queue->tail = lst->tail;
+        queue->length = lst->len;
+    } else {
+        queue->tail->sin_next = lst->head;
+        queue->tail = lst->tail;
+        queue->length += lst->len;
+    }
+
+    if (queue->length % queue->qlen == 0) {
+        /* notify worker thread */
+        pthread_cond_signal(&queue->cond);
+    }
+
+    pthread_mutex_unlock(&queue->mutex);
+}
+
 void *
 sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
   int return_on_wake)
@@ -130,4 +154,30 @@ sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
     pthread_mutex_unlock(&queue->mutex);
 
     return (wi);
+}
+
+struct sin_list *
+sin_wi_queue_get_items(struct sin_wi_queue *queue,  struct sin_list *lst,
+  int waitok, int return_on_wake)
+{
+
+    pthread_mutex_lock(&queue->mutex);
+    while (queue->head == NULL) {
+        if (waitok == 0) {
+            pthread_mutex_unlock(&queue->mutex);
+            return (NULL);
+        }
+        pthread_cond_wait(&queue->cond, &queue->mutex);
+        if (queue->head == NULL && return_on_wake != 0) {
+            pthread_mutex_unlock(&queue->mutex);
+            return (NULL);
+        }
+    }
+    lst->head = queue->head;
+    lst->tail = queue->tail;
+    lst->len = queue->length;
+    queue->length = 0;
+    queue->head = queue->tail = NULL;
+    pthread_mutex_unlock(&queue->mutex);
+    return (lst);
 }
