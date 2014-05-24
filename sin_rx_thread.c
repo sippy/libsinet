@@ -16,10 +16,12 @@
 #include "sin_list.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
+#include "sin_pkt_zone_fast.h"
 #include "sin_stance.h"
 #include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
 #include "sin_rx_thread.h"
+#include "sin_tx_thread.h"
 #include "sin_ip4_icmp.h"
 
 struct sin_rx_thread
@@ -41,7 +43,9 @@ get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
      }
      i = ring->cur;
      pkt = pzone->first[i];
+#ifdef SIN_DEBUG
      assert(pkt->zone_idx == i);
+#endif
      pzone->first[i] = NULL;
      idx = ring->slot[i].buf_idx;
 
@@ -75,16 +79,6 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 #endif
 }
 
-static inline void
-return_pkt(struct sin_pkt *pkt, struct sin_pkt_zone *pzone)
-{
-
-#ifdef SIN_DEBUG
-    assert(pzone->first[pkt->zone_idx] == NULL);
-#endif
-    pzone->first[pkt->zone_idx] = pkt;
-}
-
 static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
@@ -92,9 +86,11 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     struct pollfd fds;
     struct sin_pkt *pkt;
     struct sin_list pkts_icmp;
+    struct sin_wi_queue *icmp_queue;
     int need_spin, nready;
 
     rx_ring = srtp->sip->rx_ring;
+    icmp_queue = sin_tx_thread_get_out_queue(srtp->sip->tx_thread);
     fds.fd = srtp->sip->netmap_fd;
     fds.events = POLLIN;
     SIN_LIST_RESET(&pkts_icmp);
@@ -103,6 +99,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
         if (nready > 0) {
             need_spin = 0;
             while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
+                need_spin = 1;
 #ifdef SIN_DEBUG
                 printf("got packet, length %d, icmp = %d!\n", pkt->len,
                   sin_ip4_icmp_taste(pkt));
@@ -110,8 +107,11 @@ sin_rx_thread(struct sin_rx_thread *srtp)
                 if (sin_ip4_icmp_taste(pkt) == 1) {
                     sin_list_append(&pkts_icmp, pkt);
                 } else {
-                    need_spin = 1;
-                    return_pkt(pkt, srtp->sip->rx_free);
+                    sin_pkt_zone_ret_pkt(pkt, srtp->sip->rx_free);
+                }
+                if (!SIN_LIST_IS_EMPTY(&pkts_icmp)) {
+                    sin_wi_queue_put_items(&pkts_icmp, icmp_queue);
+                    SIN_LIST_RESET(&pkts_icmp);
                 }
             }
             if (need_spin != 0) {
