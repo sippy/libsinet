@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "sin_type.h"
+#include "sin_debug.h"
 #include "sin_errno.h"
 #include "sin_list.h"
 #include "sin_pkt.h"
@@ -61,7 +62,7 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 {
      unsigned int i, new_head;
 
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
      printf("spin_ring: enter: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
        ring->head, ring->cur, ring->tail);
 #endif
@@ -73,7 +74,7 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
          new_head = i;
      }
      ring->head = new_head;
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
      printf("spin_ring: exit: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
        ring->head, ring->cur, ring->tail);
 #endif
@@ -100,7 +101,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
             need_spin = 0;
             while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
                 need_spin = 1;
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
                 printf("got packet, length %d, icmp = %d!\n", pkt->len,
                   sin_ip4_icmp_taste(pkt));
 #endif

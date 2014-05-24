@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "sin_debug.h"
 #include "sin_type.h"
 #include "include/libsinet.h"
 #include "libsinet_internal.h"
@@ -54,7 +55,7 @@ sin_init(const char *ifname, int *e)
     sip->nifp = NETMAP_IF(sip->mem, req.nr_offset);
     sip->rx_ring = NETMAP_RXRING(sip->nifp, 0);
     sip->tx_ring = NETMAP_TXRING(sip->nifp, 0);
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
     printf("number of tx slots: %d available slots: %d\n", sip->tx_ring->num_slots, sip->tx_ring->tail - sip->rx_ring->head);
     printf("number of rx slots: %d available slots: %d\n", sip->rx_ring->num_slots, sip->rx_ring->tail - sip->rx_ring->head);
 #endif

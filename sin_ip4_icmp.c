@@ -3,12 +3,11 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#undef SIN_DEBUG
-
 #ifdef SIN_DEBUG
 #include <stdio.h>
 #endif
 
+#include "sin_debug.h"
 #include "sin_type.h"
 #include "sin_pkt.h"
 #include "sin_ip4_icmp.h"
@@ -43,7 +42,7 @@ sin_ip4_icmp_taste(struct sin_pkt *pkt)
         return (0);
     }
     p = (struct ip4_icmp_en10t *)pkt->buf;
-#ifdef SIN_DEBUG
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
     printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, icmp_type %hhu\n",
       pkt, p->ether_type, p->ip4_icmp.iphdr.ip_v, p->ip4_icmp.iphdr.ip_p,
       p->ip4_icmp.icmphdr.icmp_type);
