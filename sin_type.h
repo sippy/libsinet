@@ -24,3 +24,5 @@ struct sin_type_linkable {
   assert((ssp)->t.sin_type == (model_type))
 
 #define SIN_TYPE_SET(ssp, type) {(ssp)->t.sin_type = (type);}
+
+#define SIN_TYPE_LINK(cp, np) (cp)->t.sin_next = (struct sin_type_linkable *)(np)
