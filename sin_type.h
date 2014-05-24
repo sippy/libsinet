@@ -26,3 +26,6 @@ struct sin_type_linkable {
 #define SIN_TYPE_SET(ssp, type) {(ssp)->t.sin_type = (type);}
 
 #define SIN_TYPE_LINK(cp, np) (cp)->t.sin_next = (struct sin_type_linkable *)(np)
+
+#define SIN_TYPE_IS_LINKABLE(stp)  ((stp)->sin_type == _SIN_TYPE_PKT || \
+  (stp)->sin_type == _SIN_TYPE_SIGNAL)
