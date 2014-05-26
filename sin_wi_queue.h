@@ -13,7 +13,7 @@ void sin_wi_queue_put_items(struct sin_list *lst, struct sin_wi_queue *);
 int sin_wi_queue_pump(struct sin_wi_queue *);
 void *sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
   int return_on_wake);
-struct sin_list *sin_wi_queue_get_items(struct sin_wi_queue *queue,
+unsigned int sin_wi_queue_get_items(struct sin_wi_queue *queue,
   struct sin_list *lst, int waitok, int return_on_wake);
 
 #if 0
@@ -25,4 +25,3 @@ int rtpp_queue_get_length(struct rtpp_queue *);
 #endif
 
 #endif
-

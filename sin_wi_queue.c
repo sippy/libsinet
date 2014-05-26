@@ -173,36 +173,38 @@ sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
     return (wi);
 }
 
-struct sin_list *
+unsigned int
 sin_wi_queue_get_items(struct sin_wi_queue *queue,  struct sin_list *lst,
   int waitok, int return_on_wake)
 {
+    unsigned int nadded;
 
     pthread_mutex_lock(&queue->mutex);
     while (queue->head == NULL) {
         if (waitok == 0) {
             pthread_mutex_unlock(&queue->mutex);
-            return (NULL);
+            return (0);
         }
         queue->nwait++;
         pthread_cond_wait(&queue->cond, &queue->mutex);
         queue->nwait--;
         if (queue->head == NULL && return_on_wake != 0) {
             pthread_mutex_unlock(&queue->mutex);
-            return (NULL);
+            return (0);
         }
     }
     if (lst->head == NULL) {
         lst->head = queue->head;
         lst->tail = queue->tail;
-        lst->len = queue->length;
+        lst->len = nadded = queue->length;
     } else {
         lst->tail->sin_next = queue->head;
         lst->tail = queue->tail;
         lst->len += queue->length;
+        nadded = queue->length;
     }
     queue->length = 0;
     queue->head = queue->tail = NULL;
     pthread_mutex_unlock(&queue->mutex);
-    return (lst);
+    return (nadded);
 }
