@@ -40,7 +40,6 @@ sin_init(const char *ifname, int *e)
     }
     memset(&req, '\0', sizeof(req));
     strcpy(req.nr_name, ifname);
-    req.nr_ringid = NETMAP_NO_TX_POLL;
     req.nr_version = NETMAP_API;
     if (ioctl(sip->netmap_fd, NIOCREGIF, &req) < 0) {
         _SET_ERR(e, errno);
