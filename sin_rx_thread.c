@@ -17,6 +17,7 @@
 #include "sin_list.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
+#include "sin_mem_fast.h"
 #include "sin_pkt_zone_fast.h"
 #include "sin_stance.h"
 #include "sin_wi_queue.h"
@@ -35,7 +36,7 @@ struct sin_rx_thread
 static struct sin_pkt *
 get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 {
-     unsigned int i, idx;
+     unsigned int i;
      struct sin_pkt *pkt;
 
      if (nm_ring_empty(ring)) {
@@ -46,11 +47,9 @@ get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
      pkt = pzone->first[i];
 #ifdef SIN_DEBUG
      assert(pkt->zone_idx == i);
+     assert(pkt->buf == NETMAP_BUF(ring, ring->slot[i].buf_idx));
 #endif
      pzone->first[i] = NULL;
-     idx = ring->slot[i].buf_idx;
-
-     pkt->buf = (u_char *)NETMAP_BUF(ring, idx);
      pkt->ts = ring->ts;
      pkt->len = ring->slot[i].len;
      ring->cur = nm_ring_next(ring, i);
@@ -62,7 +61,7 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 {
      unsigned int i, new_head;
 
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
      printf("spin_ring: enter: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
        ring->head, ring->cur, ring->tail);
 #endif
@@ -74,7 +73,7 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
          new_head = i;
      }
      ring->head = new_head;
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
      printf("spin_ring: exit: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
        ring->head, ring->cur, ring->tail);
 #endif
@@ -106,6 +105,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
                   sin_ip4_icmp_taste(pkt));
 #endif
                 if (sin_ip4_icmp_taste(pkt) == 1) {
+                    sin_ip4_icmp_req2rpl(pkt);
                     sin_list_append(&pkts_icmp, pkt);
                 } else {
                     sin_pkt_zone_ret_pkt(pkt, srtp->sip->rx_free);
