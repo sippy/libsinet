@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <string.h>
 
 #ifdef SIN_DEBUG
 #include <stdio.h>
@@ -10,7 +11,9 @@
 #include "sin_debug.h"
 #include "sin_type.h"
 #include "sin_pkt.h"
+#include "sin_ip4.h"
 #include "sin_ip4_icmp.h"
+#include "sin_mem_fast.h"
 
 struct icmphdr {
     u_char  icmp_type;              /* type of message, see below */
@@ -60,4 +63,23 @@ sin_ip4_icmp_taste(struct sin_pkt *pkt)
         return (0);
     }
     return (1);
+}
+
+void
+sin_ip4_icmp_req2rpl(struct sin_pkt *pkt)
+{
+    struct ip4_icmp_en10t *p;
+    struct ip *iphdr;
+    struct icmphdr *icmphdr;
+
+    p = (struct ip4_icmp_en10t *)pkt->buf;
+    sin_memswp(p->ether_shost, p->ether_dhost, 6);
+    iphdr = &(p->ip4_icmp.iphdr);
+    sin_memswp((uint8_t *)&(iphdr->ip_src), (uint8_t *)&(iphdr->ip_dst),
+      sizeof(struct in_addr));
+    iphdr->ip_sum = 0;
+    iphdr->ip_sum = sin_ip4_cksum(iphdr, sizeof(struct ip));
+    icmphdr = &(p->ip4_icmp.icmphdr);
+    icmphdr->icmp_type = 0x0;
+    icmphdr->icmp_cksum += htons(0x0800);
 }
