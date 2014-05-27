@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <net/netmap_user.h>
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -25,6 +26,8 @@ sin_pkt_ctor(struct sin_pkt_zone *my_zone, int zone_idx,
     pkt->my_zone = my_zone;
     pkt->my_ring = my_ring;
     pkt->zone_idx = zone_idx;
+    pkt->my_slot = &(my_ring->slot[zone_idx]);
+    pkt->buf = NETMAP_BUF(my_ring, pkt->my_slot->buf_idx);
 
     return (pkt);
 }
