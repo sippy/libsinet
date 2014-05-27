@@ -11,15 +11,26 @@ sin_pkt_zone_ret_pkt(struct sin_pkt *pkt, struct sin_pkt_zone *pzone)
 static inline void
 sin_pkt_zone_swap(struct sin_pkt *p1, struct sin_pkt *p2)
 {
-    uint32_t tmp;
     struct netmap_slot *src, *dst;
 
-    src = &p1->my_ring->slot[p1->zone_idx];
-    dst = &p2->my_ring->slot[p2->zone_idx];
-    tmp = dst->buf_idx;
-    dst->buf_idx = src->buf_idx;
-    dst->len = src->len;
+    src = p1->my_slot;
+    dst = p2->my_slot;
+
+    _SIN_SWAP_I(dst->buf_idx, src->buf_idx);
+    _SIN_SWAP_P(p1->buf, p2->buf);
     dst->flags = NS_BUF_CHANGED;
-    src->buf_idx = tmp;
     src->flags = NS_BUF_CHANGED;
+    p2->len = dst->len = p1->len;
+}
+
+static inline void
+sin_pkt_zone_copy(struct sin_pkt *p1, struct sin_pkt *p2)
+{
+    struct netmap_slot *dst;
+
+    dst = p2->my_slot;
+
+    sin_memcpy(p1->buf, p2->buf, p1->len);
+    p2->len = dst->len = p1->len;
+    dst->flags = NS_BUF_CHANGED;
 }
