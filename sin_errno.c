@@ -29,7 +29,6 @@
 #include <sys/socket.h>
 
 #include "sin_type.h"
-#include "libsinet_internal.h"
 #include "sin_errno.h"
 
 #if 0

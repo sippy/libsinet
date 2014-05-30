@@ -6,7 +6,6 @@
 #include <stdlib.h>
 
 #include "sin_type.h"
-#include "libsinet_internal.h"
 #include "sin_errno.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
