@@ -24,35 +24,39 @@
 #include "sin_rx_thread.h"
 #include "sin_tx_thread.h"
 #include "sin_ip4_icmp.h"
+#include "sin_pkt_sorter.h"
 
 struct sin_rx_thread
 {
     struct sin_type_wrk_thread t;
-    struct sin_wi_queue *inpkt_queue;
-    struct sin_stance *sip;
+    struct netmap_ring *rx_ring;
+    struct sin_pkt_zone *rx_zone;
+    struct sin_pkt_sorter *rx_sort;
 };
 
-static struct sin_pkt *
-get_nextpkt(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
+static int
+dequeue_pkts(struct netmap_ring *ring, struct sin_pkt_zone *pzone,
+  struct sin_list *pl)
 {
-     unsigned int i;
+     unsigned int i, nrx;
      struct sin_pkt *pkt;
 
-     if (nm_ring_empty(ring)) {
-         /* Nothing found */
-         return (NULL);
-     }
-     i = ring->cur;
-     pkt = pzone->first[i];
+     nrx = 0;
+     while (!nm_ring_empty(ring)) {
+         i = ring->cur;
+         pkt = pzone->first[i];
 #ifdef SIN_DEBUG
-     assert(pkt->zone_idx == i);
-     assert(pkt->buf == NETMAP_BUF(ring, ring->slot[i].buf_idx));
+         assert(pkt->zone_idx == i);
+         assert(pkt->buf == NETMAP_BUF(ring, ring->slot[i].buf_idx));
 #endif
-     pzone->first[i] = NULL;
-     pkt->ts = ring->ts;
-     pkt->len = ring->slot[i].len;
-     ring->cur = nm_ring_next(ring, i);
-     return (pkt);
+         pzone->first[i] = NULL;
+         *pkt->ts = ring->ts;
+         pkt->len = ring->slot[i].len;
+         ring->cur = nm_ring_next(ring, i);
+         sin_list_append(pl, pkt);
+         nrx++;
+     }
+     return (nrx);
 }
 
 static inline void
@@ -85,43 +89,28 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
-    struct netmap_ring *rx_ring;
-    struct sin_pkt *pkt;
-    struct sin_list pkts_icmp;
-    struct sin_wi_queue *icmp_queue;
+    struct sin_list pkts_in;
 
-    rx_ring = srtp->sip->rx_ring;
-    icmp_queue = sin_tx_thread_get_out_queue(srtp->sip->tx_thread);
-    SIN_LIST_RESET(&pkts_icmp);
+    SIN_LIST_RESET(&pkts_in);
     for (;;) {
-        ioctl(srtp->sip->netmap_fd, NIOCRXSYNC, NULL);
-        if (!nm_ring_empty(rx_ring)) {
-            while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
-                printf("got packet, length %d, icmp = %d!\n", pkt->len,
-                  sin_ip4_icmp_taste(pkt));
-#endif
-                if (sin_ip4_icmp_taste(pkt) == 1) {
-                    sin_ip4_icmp_req2rpl(pkt);
-                    sin_list_append(&pkts_icmp, pkt);
-                } else {
-                    sin_pkt_zone_ret_pkt(pkt);
-                }
-                if (!SIN_LIST_IS_EMPTY(&pkts_icmp)) {
-                    sin_wi_queue_put_items(&pkts_icmp, icmp_queue);
-                    SIN_LIST_RESET(&pkts_icmp);
-                }
+        ioctl(srtp->rx_zone->netmap_fd, NIOCRXSYNC, NULL);
+        if (!nm_ring_empty(srtp->rx_ring)) {
+            dequeue_pkts(srtp->rx_ring, srtp->rx_zone, &pkts_in);
+            if (!SIN_LIST_IS_EMPTY(&pkts_in)) {
+                sin_pkt_sorter_proc(srtp->rx_sort, &pkts_in);
+                SIN_LIST_RESET(&pkts_in);
             }
         }
         if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
             break;
         }
-        spin_ring(rx_ring, srtp->sip->rx_free);
+        spin_ring(srtp->rx_ring, srtp->rx_zone);
     }
 }
 
 struct sin_rx_thread *
-sin_rx_thread_ctor(struct sin_stance *sip, int *e)
+sin_rx_thread_ctor(struct netmap_ring *rx_ring, struct sin_pkt_zone *rx_zone,
+  struct sin_pkt_sorter *rx_sort, int *e)
 {
     struct sin_rx_thread *srtp;
 
@@ -131,7 +120,10 @@ sin_rx_thread_ctor(struct sin_stance *sip, int *e)
         return (NULL);
     }
     memset(srtp, '\0', sizeof(struct sin_rx_thread));
-    srtp->sip = sip;
+    srtp->rx_ring = rx_ring;
+    srtp->rx_zone = rx_zone;
+    srtp->rx_sort = rx_sort;
+
     if (sin_wrk_thread_ctor(&srtp->t, "rx_thread #0",
       (void *(*)(void *))&sin_rx_thread, e) != 0) {
         free(srtp);

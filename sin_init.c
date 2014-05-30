@@ -19,12 +19,16 @@
 #include "sin_pkt_zone.h"
 #include "sin_rx_thread.h"
 #include "sin_tx_thread.h"
+#include "sin_pkt_sorter.h"
+#include "sin_ip4_icmp.h"
 
 void *
 sin_init(const char *ifname, int *e)
 {
     struct sin_stance *sip;
     struct nmreq req;
+    struct sin_wi_queue *tx_phy_queue;
+    void *sarg;
 
     sip = malloc(sizeof(struct sin_stance));
     if (sip == NULL) {
@@ -58,11 +62,11 @@ sin_init(const char *ifname, int *e)
     printf("number of tx slots: %d available slots: %d\n", sip->tx_ring->num_slots, sip->tx_ring->tail - sip->rx_ring->head);
     printf("number of rx slots: %d available slots: %d\n", sip->rx_ring->num_slots, sip->rx_ring->tail - sip->rx_ring->head);
 #endif
-    sip->tx_free = sin_pkt_zone_ctor(sip->tx_ring, e);
+    sip->tx_free = sin_pkt_zone_ctor(sip->tx_ring, sip->netmap_fd, e);
     if (sip->tx_free == NULL) {
         goto er_undo_1;
     }
-    sip->rx_free = sin_pkt_zone_ctor(sip->rx_ring, e);
+    sip->rx_free = sin_pkt_zone_ctor(sip->rx_ring, sip->netmap_fd, e);
     if (sip->rx_free == NULL) {
         goto er_undo_2;
     }
@@ -70,18 +74,35 @@ sin_init(const char *ifname, int *e)
     if (sip->tx_thread == NULL) {
         goto er_undo_3;
     }
-    sip->rx_thread = sin_rx_thread_ctor(sip, e);
-    if (sip->rx_thread == NULL) {
+#ifdef SIN_DEBUG
+    sarg = sip->rx_free;
+#else
+    sarg = NULL;
+#endif
+    sip->rx_phy_sort = sin_pkt_sorter_ctor(sin_pkt_zone_ret_all, sarg, e);
+    if (sip->rx_phy_sort == NULL) {
         goto er_undo_4;
+    }
+    tx_phy_queue = sin_tx_thread_get_out_queue(sip->tx_thread);
+    if (sin_pkt_sorter_reg(sip->rx_phy_sort, sin_ip4_icmp_taste,
+      sin_ip4_icmp_proc, tx_phy_queue, e) != 0) {
+        goto er_undo_5;
+    }
+    sip->rx_thread = sin_rx_thread_ctor(sip->rx_ring, sip->rx_free,
+      sip->rx_phy_sort, e);
+    if (sip->rx_thread == NULL) {
+        goto er_undo_5;
     }
 
     SIN_INCREF(sip);
     return (void *)sip;
 
 #if 0
-er_undo_5:
+er_undo_6:
     sin_rx_thread_dtor(sip->rx_thread);
 #endif
+er_undo_5:
+    sin_pkt_sorter_dtor(sip->rx_phy_sort);
 er_undo_4:
     sin_tx_thread_dtor(sip->tx_thread);
 er_undo_3:
