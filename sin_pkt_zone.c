@@ -4,13 +4,18 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "sin_type.h"
 #include "sin_errno.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
+#include "sin_mem_fast.h"
+#include "sin_pkt_zone_fast.h"
+#include "sin_list.h"
 
 struct sin_pkt;
+
 struct sin_pkt_zone_pvt {
     pthread_mutex_t mutex;
 };
@@ -37,7 +42,7 @@ sin_pkt_zone_fill_from_ring(struct sin_pkt_zone *spzp,
 }
 
 struct sin_pkt_zone *
-sin_pkt_zone_ctor(struct netmap_ring *ring, int *e)
+sin_pkt_zone_ctor(struct netmap_ring *ring, int netmap_fd, int *e)
 {
     struct sin_pkt_zone *spzp;
     int eval;
@@ -67,6 +72,7 @@ sin_pkt_zone_ctor(struct netmap_ring *ring, int *e)
     }
     SIN_TYPE_SET(spzp, _SIN_TYPE_PKT_ZONE);
     spzp->last = spzp->first + ring->num_slots - 1;
+    spzp->netmap_fd = netmap_fd;
 
     return (spzp);
 
@@ -106,4 +112,28 @@ sin_pkt_zone_unlock(struct sin_pkt_zone *spzp)
 {
 
     return (pthread_mutex_unlock(&spzp->pvt->mutex));
+}
+
+void
+#ifdef SIN_DEBUG
+sin_pkt_zone_ret_all(struct sin_list *pl, void *arg)
+#else
+sin_pkt_zone_ret_all(struct sin_list *pl, __attribute__((unused))void *arg)
+#endif
+{
+    struct sin_pkt *pkt, *pkt_next;
+#ifdef SIN_DEBUG
+    struct sin_pkt_zone *zone;
+
+    zone = (struct sin_pkt_zone *)arg;
+#endif
+
+    for (pkt = SIN_LIST_HEAD(pl); pkt != NULL; pkt = pkt_next) {
+#ifdef SIN_DEBUG
+        assert(zone == pkt->my_zone);
+#endif
+        pkt_next = SIN_ITER_NEXT(pkt);
+        SIN_TYPE_LINK(pkt, NULL);
+        sin_pkt_zone_ret_pkt(pkt);
+    }
 }
