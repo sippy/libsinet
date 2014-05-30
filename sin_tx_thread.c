@@ -24,6 +24,10 @@
 #include "sin_wrk_thread.h"
 #include "sin_tx_thread.h"
 
+#ifdef SIN_DEBUG
+#include "sin_ip4_icmp.h"
+#endif
+
 struct sin_tx_thread
 {
     struct sin_type_wrk_thread t;
@@ -31,44 +35,69 @@ struct sin_tx_thread
     struct sin_stance *sip;
 };
 
-static inline struct sin_pkt *
-advance_tx_ring(struct netmap_ring *ring, struct sin_pkt_zone *pkt_zone)
+static unsigned int
+tx_ring_nslots(struct netmap_ring *ring)
 {
-    struct sin_pkt *pkt;
+
+    if (ring->cur > ring->tail) {
+        return (ring->num_slots + ring->tail - ring->cur);
+    }
+    return (ring->tail - ring->cur);
+}
+
+static void
+tx_zone_getpkts(struct netmap_ring *ring, struct sin_pkt_zone *pkt_zone,
+  struct sin_list *plp, unsigned int ntx)
+{
     unsigned int curidx;
 
     curidx = ring->cur;
-    if (ring->cur == ring->tail) {
-        return (NULL);
+    plp->head = plp->tail = (void *)pkt_zone->first[curidx];
+    plp->len = 1;
+    for (; ntx > 1; ntx--) {
+        curidx = nm_ring_next(ring, curidx);
+        sin_list_append(plp, pkt_zone->first[curidx]);
     }
+}
+
+static void
+advance_tx_ring(struct netmap_ring *ring, unsigned int ntx)
+{
+    unsigned int curidx;
+
+#ifdef SIN_DEBUG
+     assert(ntx < ring->num_slots);
+#endif
+
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-     printf("advance_tx_ring: enter: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
-       ring->head, ring->cur, ring->tail);
+     printf("advance_tx_ring: enter: ring->head = %u, ring->cur = %u,"
+       "ring->tail = %u\n", ring->head, ring->cur, ring->tail);
 #endif
-    pkt = pkt_zone->first[curidx];
-#ifdef SIP_DEBUG
-    assert(pkt->buf == NETMAP_BUF(ring, ring->slot[curidx].buf_idx));
-#endif
-    pkt->len = ring->slot[curidx].len;
-    ring->head = ring->cur = nm_ring_next(ring, curidx);
+    curidx = ring->cur;
+    curidx += ntx;
+    while (curidx >= ring->num_slots) {
+        curidx -= ring->num_slots;
+    }
+    ring->head = ring->cur = curidx;
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-     printf("advance_tx_ring: exit: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
-       ring->head, ring->cur, ring->tail);
+    printf("advance_tx_ring: exit: ring->head = %u, ring->cur = %u, "
+      "ring->tail = %u\n", ring->head, ring->cur, ring->tail);
 #endif
-    return (pkt);
 }
 
 static void
 sin_tx_thread(struct sin_tx_thread *sttp)
 {
     struct netmap_ring *tx_ring;
+    struct sin_pkt_zone *tx_zone;
     struct pollfd fds;
-    struct sin_list pkts_out;
+    struct sin_list pkts_out, pkts_t;
     struct sin_pkt *pkt, *pkt_next, *pkt_out;
     int nready;
-    unsigned int nconsumed;
+    unsigned int ntx, i;
 
     tx_ring = sttp->sip->tx_ring;
+    tx_zone = sttp->sip->tx_free;
     fds.fd = sttp->sip->netmap_fd;
     fds.events = POLLOUT;
     SIN_LIST_RESET(&pkts_out);
@@ -78,40 +107,48 @@ sin_tx_thread(struct sin_tx_thread *sttp)
             sin_wi_queue_get_items(sttp->outpkt_queue, &pkts_out, 1, 1);
         }
         if (!SIN_LIST_IS_EMPTY(&pkts_out)) {
-            nconsumed = 0;
-            pkt_next = NULL;
-            for (pkt = SIN_LIST_HEAD(&pkts_out); pkt != NULL;
-              pkt = pkt_next) {
-                pkt_out = advance_tx_ring(tx_ring, sttp->sip->tx_free);
-                if (pkt_out == NULL) {
-                    break;
-                }
-                pkt_next = SIN_ITER_NEXT(pkt);
-                pkt->t.sin_next = NULL;
+            ntx = tx_ring_nslots(tx_ring);
+            if (ntx == 0) {
+                goto nextcycle;
+            }
+            if (ntx > pkts_out.len) {
+                ntx = pkts_out.len;
+            }
+            tx_zone_getpkts(tx_ring, tx_zone, &pkts_t, ntx);
+            pkt = SIN_LIST_HEAD(&pkts_out);
+            pkt_out = SIN_LIST_HEAD(&pkts_t);
+            for (i = 0; i < ntx; i++) {
 #if 1
                 sin_pkt_zone_swap(pkt, pkt_out);
 #else
                 sin_pkt_zone_copy(pkt, pkt_out);
 #endif
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-                printf("sin_tx_thread: sending %p packet of length %u out\n", pkt_out, pkt_out->len);
+                printf("sin_tx_thread: sending %p packet of length %u out\n",
+                  pkt_out, pkt_out->len);
+                sin_ip4_icmp_debug(pkt_out);
 #endif
-                sin_pkt_zone_ret_pkt(pkt, pkt->my_zone);
-                nconsumed++;
+                pkt_next = SIN_ITER_NEXT(pkt);
+                pkt->t.sin_next = NULL;
+                sin_pkt_zone_ret_pkt(pkt);
+                pkt = pkt_next;
+                pkt_next = SIN_ITER_NEXT(pkt_out);
+                pkt_out->t.sin_next = NULL;
+                pkt_out = pkt_next;
             }
+            advance_tx_ring(tx_ring, ntx);
             pkts_out.head = (void *)pkt;
             if (pkt == NULL) {
                 pkts_out.tail = NULL;
                 pkts_out.len = 0;
             } else {
-                pkts_out.len -= nconsumed;
+                pkts_out.len -= ntx;
             }
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-            if (nconsumed > 0) {
-                printf("sin_tx_thread: %d packets returned\n", nconsumed);
-            }
+            printf("sin_tx_thread: %d packets returned\n", ntx);
 #endif
         }
+nextcycle:
         if (sin_wrk_thread_check_ctrl(&sttp->t) == SIGTERM) {
             break;
         }
