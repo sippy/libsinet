@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -10,6 +11,8 @@
 #include "sin_ip4.h"
 #include "sin_ip4_icmp.h"
 #include "sin_mem_fast.h"
+#include "sin_list.h"
+#include "sin_wi_queue.h"
 
 struct icmphdr {
     u_char  icmp_type;              /* type of message, see below */
@@ -91,4 +94,17 @@ sin_ip4_icmp_debug(struct sin_pkt *pkt)
     icmphdr = &(p->ip4_icmp.icmphdr);
     printf("icmp.id = %hu, icmp.seq = %hu\n", ntohs(icmphdr->icmp_id),
       ntohs(icmphdr->icmp_seq));
+}
+
+void
+sin_ip4_icmp_proc(struct sin_list *pl, void *arg)
+{
+    struct sin_wi_queue *outq;
+    struct sin_pkt *pkt;
+
+    outq = (struct sin_wi_queue *)arg;
+    for (pkt = SIN_LIST_HEAD(pl); pkt != NULL; pkt = SIN_ITER_NEXT(pkt)) {
+        sin_ip4_icmp_req2rpl(pkt);
+    }
+    sin_wi_queue_put_items(pl, outq);
 }
