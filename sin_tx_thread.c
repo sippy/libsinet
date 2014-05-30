@@ -111,11 +111,17 @@ sin_tx_thread(struct sin_tx_thread *sttp)
             pkt = SIN_LIST_HEAD(&pkts_out);
             pkt_out = SIN_LIST_HEAD(&pkts_t);
             for (i = 0; i < ntx; i++) {
-#if 1
-                sin_pkt_zone_swap(pkt, pkt_out);
-#else
-                sin_pkt_zone_copy(pkt, pkt_out);
+		if (tx_zone->netmap_fd == pkt->my_zone->netmap_fd) {
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
+                    printf("zero-copying %p to %p\n", pkt, pkt_out);
 #endif
+                    sin_pkt_zone_swap(pkt, pkt_out);
+                } else {
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
+                    printf("copying %p to %p\n", pkt, pkt_out);
+#endif
+                    sin_pkt_zone_copy(pkt, pkt_out);
+                }
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
                 printf("sin_tx_thread: sending %p packet of length %u out\n",
                   pkt_out, pkt_out->len);
