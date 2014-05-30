@@ -22,6 +22,8 @@ sin_pkt_ctor(struct sin_pkt_zone *my_zone, int zone_idx,
     }
     memset(pkt, '\0', sizeof(struct sin_pkt));
     SIN_TYPE_SET(pkt, _SIN_TYPE_PKT);
+    pkt->ts = malloc(sizeof(struct timeval));
+    memset(pkt->ts, '\0', sizeof(struct timeval));
     pkt->my_zone = my_zone;
     pkt->my_ring = my_ring;
     pkt->zone_idx = zone_idx;
@@ -37,5 +39,6 @@ sin_pkt_dtor(struct sin_pkt *pkt)
 {
 
     SIN_TYPE_ASSERT(pkt, _SIN_TYPE_PKT);
+    free(pkt->ts);
     free(pkt);
 }

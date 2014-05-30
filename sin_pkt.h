@@ -8,7 +8,7 @@ struct sin_pkt
     struct netmap_ring *my_ring;
     struct netmap_slot *my_slot;
     unsigned int zone_idx;
-    struct timeval ts;
+    struct timeval *ts;
     char *buf;
     unsigned int len;
 };
