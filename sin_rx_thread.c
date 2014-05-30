@@ -61,7 +61,11 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
 {
      unsigned int i, new_head;
 
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
+     if (ring->cur == nm_ring_next(ring, ring->head) ||
+       (ring->head == 0 && ring->cur == 0 && ring->tail == 0)) {
+         return;
+     }
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
      printf("spin_ring: enter: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
        ring->head, ring->cur, ring->tail);
 #endif
@@ -73,7 +77,7 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
          new_head = i;
      }
      ring->head = new_head;
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
      printf("spin_ring: exit: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
        ring->head, ring->cur, ring->tail);
 #endif
@@ -87,7 +91,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     struct sin_pkt *pkt;
     struct sin_list pkts_icmp;
     struct sin_wi_queue *icmp_queue;
-    int need_spin, nready;
+    int nready;
 
     rx_ring = srtp->sip->rx_ring;
     icmp_queue = sin_tx_thread_get_out_queue(srtp->sip->tx_thread);
@@ -97,9 +101,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     for (;;) {
         nready = poll(&fds, 1, 10);
         if (nready > 0) {
-            need_spin = 0;
             while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
-                need_spin = 1;
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
                 printf("got packet, length %d, icmp = %d!\n", pkt->len,
                   sin_ip4_icmp_taste(pkt));
@@ -108,20 +110,18 @@ sin_rx_thread(struct sin_rx_thread *srtp)
                     sin_ip4_icmp_req2rpl(pkt);
                     sin_list_append(&pkts_icmp, pkt);
                 } else {
-                    sin_pkt_zone_ret_pkt(pkt, srtp->sip->rx_free);
+                    sin_pkt_zone_ret_pkt(pkt);
                 }
                 if (!SIN_LIST_IS_EMPTY(&pkts_icmp)) {
                     sin_wi_queue_put_items(&pkts_icmp, icmp_queue);
                     SIN_LIST_RESET(&pkts_icmp);
                 }
             }
-            if (need_spin != 0) {
-                spin_ring(rx_ring, srtp->sip->rx_free);
-            }
         }
         if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
             break;
         }
+        spin_ring(rx_ring, srtp->sip->rx_free);
     }
 }
 
