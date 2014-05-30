@@ -2,11 +2,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <string.h>
-
-#ifdef SIN_DEBUG
 #include <stdio.h>
-#endif
+#include <string.h>
 
 #include "sin_debug.h"
 #include "sin_type.h"
@@ -19,7 +16,8 @@ struct icmphdr {
     u_char  icmp_type;              /* type of message, see below */
     u_char  icmp_code;              /* type sub code */
     u_short icmp_cksum;             /* ones complement cksum of struct */
-    char    icmphdr_rest[4];
+    u_short icmp_id;
+    u_short icmp_seq;
 } __attribute__((__packed__));
 
 struct ip4_icmp {
@@ -82,4 +80,16 @@ sin_ip4_icmp_req2rpl(struct sin_pkt *pkt)
     icmphdr = &(p->ip4_icmp.icmphdr);
     icmphdr->icmp_type = 0x0;
     icmphdr->icmp_cksum += htons(0x0800);
+}
+
+void
+sin_ip4_icmp_debug(struct sin_pkt *pkt)
+{
+    struct ip4_icmp_en10t *p;
+    struct icmphdr *icmphdr;
+
+    p = (struct ip4_icmp_en10t *)pkt->buf;
+    icmphdr = &(p->ip4_icmp.icmphdr);
+    printf("icmp.id = %hu, icmp.seq = %hu\n", ntohs(icmphdr->icmp_id),
+      ntohs(icmphdr->icmp_seq));
 }
