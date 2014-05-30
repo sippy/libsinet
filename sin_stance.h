@@ -2,6 +2,7 @@ struct sin_pkt;
 struct sin_pkt_zone;
 struct sin_rx_thread;
 struct sin_tx_thread;
+struct sin_pkt_sorter;
 
 struct sin_stance {
     struct sin_type t;
@@ -15,4 +16,5 @@ struct sin_stance {
     struct sin_pkt_zone *tx_free;
     struct sin_tx_thread *tx_thread;
     struct sin_rx_thread *rx_thread;
+    struct sin_pkt_sorter *rx_phy_sort;
 };
