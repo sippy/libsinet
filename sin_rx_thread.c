@@ -1,7 +1,7 @@
+#include <sys/ioctl.h>
 #include <net/netmap_user.h>
 #include <assert.h>
 #include <errno.h>
-#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <sched.h>
@@ -87,20 +87,16 @@ static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
     struct netmap_ring *rx_ring;
-    struct pollfd fds;
     struct sin_pkt *pkt;
     struct sin_list pkts_icmp;
     struct sin_wi_queue *icmp_queue;
-    int nready;
 
     rx_ring = srtp->sip->rx_ring;
     icmp_queue = sin_tx_thread_get_out_queue(srtp->sip->tx_thread);
-    fds.fd = srtp->sip->netmap_fd;
-    fds.events = POLLIN;
     SIN_LIST_RESET(&pkts_icmp);
     for (;;) {
-        nready = poll(&fds, 1, 10);
-        if (nready > 0) {
+        ioctl(srtp->sip->netmap_fd, NIOCRXSYNC, NULL);
+        if (!nm_ring_empty(rx_ring)) {
             while ((pkt = get_nextpkt(rx_ring, srtp->sip->rx_free))) {
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
                 printf("got packet, length %d, icmp = %d!\n", pkt->len,

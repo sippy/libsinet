@@ -1,7 +1,7 @@
+#include <sys/ioctl.h>
 #include <net/netmap_user.h>
 #include <assert.h>
 #include <errno.h>
-#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <sched.h>
@@ -90,27 +90,21 @@ sin_tx_thread(struct sin_tx_thread *sttp)
 {
     struct netmap_ring *tx_ring;
     struct sin_pkt_zone *tx_zone;
-    struct pollfd fds;
     struct sin_list pkts_out, pkts_t;
     struct sin_pkt *pkt, *pkt_next, *pkt_out;
-    int nready;
     unsigned int ntx, i;
 
     tx_ring = sttp->sip->tx_ring;
     tx_zone = sttp->sip->tx_free;
-    fds.fd = sttp->sip->netmap_fd;
-    fds.events = POLLOUT;
     SIN_LIST_RESET(&pkts_out);
     for (;;) {
-        nready = poll(&fds, 1, 10);
-        if (nready > 0) {
-            sin_wi_queue_get_items(sttp->outpkt_queue, &pkts_out, 1, 1);
+        ioctl(sttp->sip->netmap_fd, NIOCTXSYNC, NULL);
+        ntx = tx_ring_nslots(tx_ring);
+        if (ntx == 0) {
+            goto nextcycle;
         }
+        sin_wi_queue_get_items(sttp->outpkt_queue, &pkts_out, 1, 1);
         if (!SIN_LIST_IS_EMPTY(&pkts_out)) {
-            ntx = tx_ring_nslots(tx_ring);
-            if (ntx == 0) {
-                goto nextcycle;
-            }
             if (ntx > pkts_out.len) {
                 ntx = pkts_out.len;
             }
