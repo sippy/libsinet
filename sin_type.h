@@ -19,6 +19,8 @@ struct sin_type_linkable {
 #define _SIN_TYPE_WI_QUEUE      1938993589
 #define _SIN_TYPE_WRK_THREAD    1612654994
 #define _SIN_TYPE_SIGNAL        229112560
+#define _SIN_TYPE_PKT_SORTER	1943693179
+#define _SIN_TYPE_ITERABLE      962174450
 
 #ifdef SIN_DEBUG
 # define SIN_TYPE_ASSERT(ssp, model_type) \
@@ -32,6 +34,6 @@ struct sin_type_linkable {
 #define SIN_TYPE_LINK(cp, np) (cp)->t.sin_next = (struct sin_type_linkable *)(np)
 
 #define SIN_TYPE_IS_LINKABLE(stp)  ((stp)->sin_type == _SIN_TYPE_PKT || \
-  (stp)->sin_type == _SIN_TYPE_SIGNAL)
+  (stp)->sin_type == _SIN_TYPE_SIGNAL || (stp)->sin_type == _SIN_TYPE_ITERABLE)
 
 #define SIN_ITER_NEXT(stlp)	((void *)((stlp)->t.sin_next))
