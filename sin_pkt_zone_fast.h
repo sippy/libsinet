@@ -1,11 +1,11 @@
 static inline void
-sin_pkt_zone_ret_pkt(struct sin_pkt *pkt, struct sin_pkt_zone *pzone)
+sin_pkt_zone_ret_pkt(struct sin_pkt *pkt)
 {
 
 #ifdef SIN_DEBUG
-    assert(pzone->first[pkt->zone_idx] == NULL);
+    assert(pkt->my_zone->first[pkt->zone_idx] == NULL);
 #endif
-    pzone->first[pkt->zone_idx] = pkt;
+    pkt->my_zone->first[pkt->zone_idx] = pkt;
 }
 
 static inline void
