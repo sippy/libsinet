@@ -22,11 +22,11 @@ sin_destroy(void *p)
     sip = (struct sin_stance *)p;
     SIN_TYPE_ASSERT(sip, _SIN_TYPE_SINSTANCE);
 
-    sin_rx_thread_dtor(sip->rx_thread);
-    sin_tx_thread_dtor(sip->tx_thread);
+    sin_rx_thread_dtor(sip->rx_phy_thread);
+    sin_tx_thread_dtor(sip->tx_phy_thread);
     sin_pkt_sorter_dtor(sip->rx_phy_sort);
-    sin_pkt_zone_dtor(sip->rx_free);
-    sin_pkt_zone_dtor(sip->tx_free);
+    sin_pkt_zone_dtor(sip->rx_phy_free);
+    sin_pkt_zone_dtor(sip->tx_phy_free);
     close(sip->netmap_fd);
     free(sip);
 }
