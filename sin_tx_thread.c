@@ -32,7 +32,8 @@ struct sin_tx_thread
 {
     struct sin_type_wrk_thread t;
     struct sin_wi_queue *outpkt_queue;
-    struct sin_stance *sip;
+    struct netmap_ring *tx_ring;
+    struct sin_pkt_zone *tx_zone;
 };
 
 static unsigned int
@@ -94,11 +95,11 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     struct sin_pkt *pkt, *pkt_next, *pkt_out;
     unsigned int ntx, i;
 
-    tx_ring = sttp->sip->tx_ring;
-    tx_zone = sttp->sip->tx_free;
+    tx_ring = sttp->tx_ring;
+    tx_zone = sttp->tx_zone;
     SIN_LIST_RESET(&pkts_out);
     for (;;) {
-        ioctl(sttp->sip->netmap_fd, NIOCTXSYNC, NULL);
+        ioctl(tx_zone->netmap_fd, NIOCTXSYNC, NULL);
         ntx = tx_ring_nslots(tx_ring);
         if (ntx == 0) {
             goto nextcycle;
@@ -156,7 +157,8 @@ nextcycle:
 }
 
 struct sin_tx_thread *
-sin_tx_thread_ctor(struct sin_stance *sip, int *e)
+sin_tx_thread_ctor(struct netmap_ring *tx_ring, struct sin_pkt_zone *tx_zone,
+  int *e)
 {
     struct sin_tx_thread *sttp;
 
@@ -170,7 +172,8 @@ sin_tx_thread_ctor(struct sin_stance *sip, int *e)
     if (sttp->outpkt_queue == NULL) {
         goto er_undo_1;
     }
-    sttp->sip = sip;
+    sttp->tx_ring = tx_ring;
+    sttp->tx_zone = tx_zone;
     if (sin_wrk_thread_ctor(&sttp->t, "tx_thread #0",
       (void *(*)(void *))&sin_tx_thread, e) != 0) {
         goto er_undo_2;
