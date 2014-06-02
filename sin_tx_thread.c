@@ -67,24 +67,31 @@ advance_tx_ring(struct netmap_ring *ring, unsigned int ntx)
     unsigned int curidx;
 
 #ifdef SIN_DEBUG
-     assert(ntx < ring->num_slots);
+    assert(ntx < ring->num_slots);
 #endif
 
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-     printf("advance_tx_ring: enter: ring->head = %u, ring->cur = %u,"
-       "ring->tail = %u\n", ring->head, ring->cur, ring->tail);
-#endif
     curidx = ring->cur;
     curidx += ntx;
     while (curidx >= ring->num_slots) {
         curidx -= ring->num_slots;
     }
     ring->head = ring->cur = curidx;
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-    printf("advance_tx_ring: exit: ring->head = %u, ring->cur = %u, "
-      "ring->tail = %u\n", ring->head, ring->cur, ring->tail);
-#endif
 }
+
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
+static void
+_advance_tx_ring(const char *tname, struct netmap_ring *ring, unsigned int ntx)
+{
+    printf("%s: advance_tx_ring: enter: ring->head = %u, ring->cur = %u,"
+       "ring->tail = %u\n", tname, ring->head, ring->cur, ring->tail);
+    advance_tx_ring(ring, ntx);
+    printf("%s: advance_tx_ring: exit: ring->head = %u, ring->cur = %u, "
+      "ring->tail = %u\n", tname, ring->head, ring->cur, ring->tail);
+}
+#define advance_tx_ring(a, b, c) _advance_tx_ring(a, b, c)
+#else
+#define advance_tx_ring(a, b, c) advance_tx_ring(b, c)
+#endif
 
 static void
 sin_tx_thread(struct sin_tx_thread *sttp)
@@ -94,6 +101,9 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     struct sin_list pkts_out, pkts_t;
     struct sin_pkt *pkt, *pkt_next, *pkt_out;
     unsigned int ntx, i;
+    const char *tname;
+
+    tname = sin_wrk_thread_get_tname(&sttp->t);
 
     tx_ring = sttp->tx_ring;
     tx_zone = sttp->tx_zone;
@@ -115,18 +125,18 @@ sin_tx_thread(struct sin_tx_thread *sttp)
             for (i = 0; i < ntx; i++) {
 		if (tx_zone->netmap_fd == pkt->my_zone->netmap_fd) {
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-                    printf("zero-copying %p to %p\n", pkt, pkt_out);
+                    printf("%s: zero-copying %p to %p\n", tname, pkt, pkt_out);
 #endif
                     sin_pkt_zone_swap(pkt, pkt_out);
                 } else {
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-                    printf("copying %p to %p\n", pkt, pkt_out);
+                    printf("%s: copying %p to %p\n", tname, pkt, pkt_out);
 #endif
                     sin_pkt_zone_copy(pkt, pkt_out);
                 }
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-                printf("sin_tx_thread: sending %p packet of length %u out\n",
-                  pkt_out, pkt_out->len);
+                printf("%s: sin_tx_thread: sending %p packet of length %u out\n",
+                  tname, pkt_out, pkt_out->len);
                 sin_ip4_icmp_debug(pkt_out);
 #endif
                 pkt_next = SIN_ITER_NEXT(pkt);
@@ -137,7 +147,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
                 pkt_out->t.sin_next = NULL;
                 pkt_out = pkt_next;
             }
-            advance_tx_ring(tx_ring, ntx);
+            advance_tx_ring(tname, tx_ring, ntx);
             pkts_out.head = (void *)pkt;
             if (pkt == NULL) {
                 pkts_out.tail = NULL;
@@ -146,7 +156,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
                 pkts_out.len -= ntx;
             }
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-            printf("sin_tx_thread: %d packets returned\n", ntx);
+            printf("%s: sin_tx_thread: %d packets returned\n", tname, ntx);
 #endif
         }
 nextcycle:
@@ -157,8 +167,8 @@ nextcycle:
 }
 
 struct sin_tx_thread *
-sin_tx_thread_ctor(struct netmap_ring *tx_ring, struct sin_pkt_zone *tx_zone,
-  int *e)
+sin_tx_thread_ctor(const char *tname, struct netmap_ring *tx_ring,
+  struct sin_pkt_zone *tx_zone, int *e)
 {
     struct sin_tx_thread *sttp;
 
@@ -168,13 +178,14 @@ sin_tx_thread_ctor(struct netmap_ring *tx_ring, struct sin_pkt_zone *tx_zone,
         return (NULL);
     }
     memset(sttp, '\0', sizeof(struct sin_tx_thread));
-    sttp->outpkt_queue = sin_wi_queue_ctor(e, "tx_thread out packets queue");
+    sttp->outpkt_queue = sin_wi_queue_ctor(e, "tx_thread(%s) out packets queue",
+      tname);
     if (sttp->outpkt_queue == NULL) {
         goto er_undo_1;
     }
     sttp->tx_ring = tx_ring;
     sttp->tx_zone = tx_zone;
-    if (sin_wrk_thread_ctor(&sttp->t, "tx_thread #0",
+    if (sin_wrk_thread_ctor(&sttp->t, tname,
       (void *(*)(void *))&sin_tx_thread, e) != 0) {
         goto er_undo_2;
     }
