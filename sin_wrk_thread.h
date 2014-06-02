@@ -15,4 +15,5 @@ void sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp);
 int sin_wrk_thread_check_ctrl(struct sin_type_wrk_thread *swtp);
 void sin_wrk_thread_notify_on_ctrl(struct sin_type_wrk_thread *swtp,
   struct sin_wi_queue *ctrl_notify_queue);
+const char *sin_wrk_thread_get_tname(struct sin_type_wrk_thread *swtp);
 
