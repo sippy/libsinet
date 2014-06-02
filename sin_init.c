@@ -21,13 +21,14 @@
 #include "sin_tx_thread.h"
 #include "sin_pkt_sorter.h"
 #include "sin_ip4_icmp.h"
+#include "sin_wi_queue.h"
 
 void *
 sin_init(const char *ifname, int *e)
 {
     struct sin_stance *sip;
     struct nmreq req;
-    struct sin_wi_queue *tx_phy_queue;
+    struct sin_wi_queue *tx_phy_queue, *tx_hst_queue;
     void *sarg;
 
     sip = malloc(sizeof(struct sin_stance));
@@ -59,64 +60,113 @@ sin_init(const char *ifname, int *e)
     sip->nifp = NETMAP_IF(sip->mem, req.nr_offset);
     sip->rx_phy_ring = NETMAP_RXRING(sip->nifp, 0);
     sip->tx_phy_ring = NETMAP_TXRING(sip->nifp, 0);
+    sip->rx_hst_ring = NETMAP_RXRING(sip->nifp, 1);
+    sip->tx_hst_ring = NETMAP_TXRING(sip->nifp, 1);
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
     printf("number of tx rings: %d\n", req.nr_tx_rings);
     printf("number of rx rings: %d\n", req.nr_rx_rings);
-    printf("number of tx slots: %d available slots: %d\n",
+    printf(" number of tx slots(hw): %d available slots: %d\n",
       sip->tx_phy_ring->num_slots, sip->tx_phy_ring->tail -
       sip->tx_phy_ring->head);
-    printf("number of rx slots: %d available slots: %d\n",
+    printf(" number of rx slots(hw): %d available slots: %d\n",
       sip->rx_phy_ring->num_slots, sip->rx_phy_ring->tail -
       sip->rx_phy_ring->head);
+    printf(" number of tx slots(sw): %d available slots: %d\n",
+      sip->tx_hst_ring->num_slots, sip->tx_hst_ring->tail -
+      sip->tx_hst_ring->head);
+    printf(" number of rx slots(sw): %d available slots: %d\n",
+      sip->rx_hst_ring->num_slots, sip->rx_hst_ring->tail -
+      sip->rx_hst_ring->head);
 #endif
-    sip->tx_phy_free = sin_pkt_zone_ctor(sip->tx_phy_ring, sip->netmap_fd, e);
-    if (sip->tx_phy_free == NULL) {
+    sip->tx_phy_zone = sin_pkt_zone_ctor(sip->tx_phy_ring, sip->netmap_fd, e);
+    if (sip->tx_phy_zone == NULL) {
         goto er_undo_1;
     }
-    sip->rx_phy_free = sin_pkt_zone_ctor(sip->rx_phy_ring, sip->netmap_fd, e);
-    if (sip->rx_phy_free == NULL) {
+    sip->rx_phy_zone = sin_pkt_zone_ctor(sip->rx_phy_ring, sip->netmap_fd, e);
+    if (sip->rx_phy_zone == NULL) {
         goto er_undo_2;
     }
-    sip->tx_phy_thread = sin_tx_thread_ctor(sip->tx_phy_ring, sip->tx_phy_free,
-      e);
-    if (sip->tx_phy_thread == NULL) {
+    sip->tx_hst_zone = sin_pkt_zone_ctor(sip->tx_hst_ring, sip->netmap_fd, e);
+    if (sip->tx_hst_zone == NULL) {
         goto er_undo_3;
     }
+    sip->rx_hst_zone = sin_pkt_zone_ctor(sip->rx_hst_ring, sip->netmap_fd, e);
+    if (sip->rx_hst_zone == NULL) {
+        goto er_undo_4;
+    }
+
+    sip->tx_phy_thread = sin_tx_thread_ctor("tx_phy #0", sip->tx_phy_ring,
+      sip->tx_phy_zone, e);
+    if (sip->tx_phy_thread == NULL) {
+        goto er_undo_5;
+    }
+    sip->tx_hst_thread = sin_tx_thread_ctor("tx_hst #0", sip->tx_hst_ring,
+      sip->tx_hst_zone, e);
+    if (sip->tx_hst_thread == NULL) {
+        goto er_undo_6;
+    }
+
 #ifdef SIN_DEBUG
-    sarg = sip->rx_phy_free;
+    sarg = sip->rx_phy_zone;
 #else
     sarg = NULL;
 #endif
+    tx_hst_queue = sin_tx_thread_get_out_queue(sip->tx_hst_thread);
+#if 1
+    sip->rx_phy_sort = sin_pkt_sorter_ctor((void *)sin_wi_queue_put_items,
+      tx_hst_queue, e);
+#else
     sip->rx_phy_sort = sin_pkt_sorter_ctor(sin_pkt_zone_ret_all, sarg, e);
+#endif
     if (sip->rx_phy_sort == NULL) {
-        goto er_undo_4;
+        goto er_undo_7;
     }
     tx_phy_queue = sin_tx_thread_get_out_queue(sip->tx_phy_thread);
     if (sin_pkt_sorter_reg(sip->rx_phy_sort, sin_ip4_icmp_taste,
       sin_ip4_icmp_proc, tx_phy_queue, e) != 0) {
-        goto er_undo_5;
+        goto er_undo_8;
     }
-    sip->rx_phy_thread = sin_rx_thread_ctor(sip->rx_phy_ring, sip->rx_phy_free,
-      sip->rx_phy_sort, e);
+    sip->rx_phy_thread = sin_rx_thread_ctor("rx_phy #0", sip->rx_phy_ring,
+      sip->rx_phy_zone, sip->rx_phy_sort, e);
     if (sip->rx_phy_thread == NULL) {
-        goto er_undo_5;
+        goto er_undo_8;
+    }
+
+    sip->rx_hst_sort = sin_pkt_sorter_ctor((void *)sin_wi_queue_put_items,
+      tx_phy_queue, e);
+    if (sip->rx_hst_sort == NULL) {
+        goto er_undo_9;
+    }
+    sip->rx_hst_thread = sin_rx_thread_ctor("rx_hst #0", sip->rx_hst_ring,
+      sip->rx_hst_zone, sip->rx_hst_sort, e);
+    if (sip->rx_hst_thread == NULL) {
+        goto er_undo_10;
     }
 
     SIN_INCREF(sip);
     return (void *)sip;
-
 #if 0
-er_undo_6:
-    sin_rx_thread_dtor(sip->rx_phy_thread);
+er_undo_11:
+    sin_rx_thread_dtor(sip->rx_hst_thread);
 #endif
-er_undo_5:
+er_undo_10:
+    sin_pkt_sorter_dtor(sip->rx_hst_sort);
+er_undo_9:
+    sin_rx_thread_dtor(sip->rx_phy_thread);
+er_undo_8:
     sin_pkt_sorter_dtor(sip->rx_phy_sort);
-er_undo_4:
+er_undo_7:
+    sin_tx_thread_dtor(sip->tx_hst_thread);
+er_undo_6:
     sin_tx_thread_dtor(sip->tx_phy_thread);
+er_undo_5:
+    sin_pkt_zone_dtor(sip->rx_hst_zone);
+er_undo_4:
+    sin_pkt_zone_dtor(sip->tx_hst_zone);
 er_undo_3:
-    sin_pkt_zone_dtor(sip->rx_phy_free);
+    sin_pkt_zone_dtor(sip->rx_phy_zone);
 er_undo_2:
-    sin_pkt_zone_dtor(sip->tx_phy_free);
+    sin_pkt_zone_dtor(sip->tx_phy_zone);
 er_undo_1:
     close(sip->netmap_fd);
 er_undo_0:
