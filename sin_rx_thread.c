@@ -1,10 +1,9 @@
 #include <sys/ioctl.h>
 #include <net/netmap_user.h>
-#include <assert.h>
 #include <errno.h>
 #include <signal.h>
-#include <sched.h>
 #ifdef SIN_DEBUG
+#include <assert.h>
 #include <stdio.h>
 #endif
 #include <stdlib.h>
@@ -16,14 +15,8 @@
 #include "sin_list.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
-#include "sin_mem_fast.h"
-#include "sin_pkt_zone_fast.h"
-#include "sin_stance.h"
-#include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
 #include "sin_rx_thread.h"
-#include "sin_tx_thread.h"
-#include "sin_ip4_icmp.h"
 #include "sin_pkt_sorter.h"
 
 struct sin_rx_thread
