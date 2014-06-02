@@ -15,13 +15,20 @@ static void
 sin_wrk_thread_runner(struct sin_type_wrk_thread *swtp)
 {
 
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
     printf("%s has started\n", swtp->tname);
 #endif
     swtp->runner(swtp);
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 2)
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
     printf("%s has stopped\n", swtp->tname);
 #endif
+}
+
+const char *
+sin_wrk_thread_get_tname(struct sin_type_wrk_thread *swtp)
+{
+
+    return (swtp->tname);
 }
 
 
@@ -32,7 +39,7 @@ sin_wrk_thread_ctor(struct sin_type_wrk_thread *swtp, const char *tname,
     int rval;
 
     swtp->sin_type = _SIN_TYPE_WRK_THREAD;
-    asprintf(&swtp->tname, "%s worker thread", tname);
+    asprintf(&swtp->tname, "worker thread(%s)", tname);
     if (swtp->tname == NULL) {
         _SET_ERR(e, ENOMEM);
         return (-1);
