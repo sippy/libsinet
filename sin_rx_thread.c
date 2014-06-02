@@ -1,6 +1,7 @@
 #include <sys/ioctl.h>
 #include <net/netmap_user.h>
 #include <errno.h>
+#include <poll.h>
 #include <signal.h>
 #ifdef SIN_DEBUG
 #include <assert.h>
@@ -52,8 +53,19 @@ dequeue_pkts(struct netmap_ring *ring, struct sin_pkt_zone *pzone,
      return (nrx);
 }
 
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
+#define spin_ring(a, b, c) _spin_ring(a, b, c)
+
 static inline void
-spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
+_spin_ring(const char *tname, struct netmap_ring *ring,
+  struct sin_pkt_zone *pzone)
+#else
+#define spin_ring(a, b, c) _spin_ring(b, c)
+
+static inline void
+_spin_ring(struct netmap_ring *ring,
+  struct sin_pkt_zone *pzone)
+#endif
 {
      unsigned int i, new_head;
 
@@ -62,8 +74,8 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
          return;
      }
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-     printf("spin_ring: enter: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
-       ring->head, ring->cur, ring->tail);
+     printf("%s: spin_ring: enter: ring->head = %u, ring->cur = %u, "
+       "ring->tail = %u\n", tname, ring->head, ring->cur, ring->tail);
 #endif
      new_head = ring->head;
      for (i = ring->head; i != ring->cur; i = nm_ring_next(ring, i)) {
@@ -74,8 +86,8 @@ spin_ring(struct netmap_ring *ring, struct sin_pkt_zone *pzone)
      }
      ring->head = new_head;
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-     printf("spin_ring: exit: ring->head = %u, ring->cur = %u, ring->tail = %u\n",
-       ring->head, ring->cur, ring->tail);
+     printf("%s: spin_ring: exit: ring->head = %u, ring->cur = %u, "
+       "ring->tail = %u\n", tname, ring->head, ring->cur, ring->tail);
 #endif
 }
 
@@ -83,11 +95,17 @@ static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
     struct sin_list pkts_in;
+    const char *tname;
+    struct pollfd fds;
+    int nready;
 
+    tname = sin_wrk_thread_get_tname(&srtp->t);
+    fds.fd = srtp->rx_zone->netmap_fd;
+    fds.events = POLLIN;
     SIN_LIST_RESET(&pkts_in);
     for (;;) {
-        ioctl(srtp->rx_zone->netmap_fd, NIOCRXSYNC, NULL);
-        if (!nm_ring_empty(srtp->rx_ring)) {
+        nready = poll(&fds, 1, 10);
+        if (nready > 0 && !nm_ring_empty(srtp->rx_ring)) {
             dequeue_pkts(srtp->rx_ring, srtp->rx_zone, &pkts_in);
             if (!SIN_LIST_IS_EMPTY(&pkts_in)) {
                 sin_pkt_sorter_proc(srtp->rx_sort, &pkts_in);
@@ -97,13 +115,13 @@ sin_rx_thread(struct sin_rx_thread *srtp)
         if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
             break;
         }
-        spin_ring(srtp->rx_ring, srtp->rx_zone);
+        spin_ring(tname, srtp->rx_ring, srtp->rx_zone);
     }
 }
 
 struct sin_rx_thread *
-sin_rx_thread_ctor(struct netmap_ring *rx_ring, struct sin_pkt_zone *rx_zone,
-  struct sin_pkt_sorter *rx_sort, int *e)
+sin_rx_thread_ctor(const char *tname, struct netmap_ring *rx_ring,
+  struct sin_pkt_zone *rx_zone, struct sin_pkt_sorter *rx_sort, int *e)
 {
     struct sin_rx_thread *srtp;
 
@@ -117,7 +135,7 @@ sin_rx_thread_ctor(struct netmap_ring *rx_ring, struct sin_pkt_zone *rx_zone,
     srtp->rx_zone = rx_zone;
     srtp->rx_sort = rx_sort;
 
-    if (sin_wrk_thread_ctor(&srtp->t, "rx_thread #0",
+    if (sin_wrk_thread_ctor(&srtp->t, tname,
       (void *(*)(void *))&sin_rx_thread, e) != 0) {
         free(srtp);
         return (NULL);
