@@ -34,7 +34,7 @@ def second_pass(fname_in, fname_out, filter):
         fout.write('#endif\n')
 
 if __name__ == '__main__':
-    always_ignore = ('<sys/types.h>',)
+    always_ignore = ('"sin_debug.h"', '<sys/types.h>')
     fname = sys.argv[1]
     ignore = list(always_ignore)
     if fname.endswith('.c'):
@@ -45,19 +45,21 @@ if __name__ == '__main__':
         print '  ...no includes found'
         exit(0)
     includes = [x for x in includes if x not in ignore]
-    print 'collected %d "#include" statements' % len(includes)
+    print ' .collected %d "#include" statements' % len(includes)
     r = int(random() * 1000000.0)
     sfl_includes = []
+    devnull = file('/dev/null', 'w')
+    fname_bak = '%s.%.6d' % (fname, r)
+    rename(fname, fname_bak)
+    print ' ..renamed "%s" into "%s"' % (fname, fname_bak)
     for include in includes:
-        fname_bak = '%s.%.6d' % (fname, r)
-        print 'renamed "%s" into "%s"' % (fname, fname_bak)
-        rename(fname, fname_bak)
         second_pass(fname_bak, fname, include)
-        rval = call(["make", "clean", "all"])
+        rval = call(["make", "depend", "test"], stdout = devnull, \
+          stderr = devnull)
         if rval == 0:
             sfl_includes.append((include, fname))
         remove(fname)
-        rename(fname_bak, fname)
+    rename(fname_bak, fname)
     for include, fname in sfl_includes:
         print '"#include %s" is superfluous in %s' % (include, fname)
         exit(1)
