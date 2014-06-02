@@ -27,7 +27,9 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#ifdef SIN_DEBUG
 #include <assert.h>
+#endif
 #include <stdlib.h>
 
 #include "include/libsinet.h"

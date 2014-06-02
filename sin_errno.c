@@ -25,10 +25,6 @@
  *
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#include "sin_type.h"
 #include "sin_errno.h"
 
 #if 0

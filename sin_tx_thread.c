@@ -1,9 +1,10 @@
 #include <sys/ioctl.h>
 #include <net/netmap_user.h>
+#ifdef SIN_DEBUG
 #include <assert.h>
+#endif
 #include <errno.h>
 #include <signal.h>
-#include <sched.h>
 #ifdef SIN_DEBUG
 #include <stdio.h>
 #endif

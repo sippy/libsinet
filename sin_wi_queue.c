@@ -1,4 +1,6 @@
+#ifdef SIN_DEBUG
 #include <assert.h>
+#endif
 #include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>

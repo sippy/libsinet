@@ -1,6 +1,8 @@
 #include <sys/types.h>
 #include <net/netmap_user.h>
+#ifdef SIN_DEBUG
 #include <assert.h>
+#endif
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
