@@ -47,6 +47,7 @@ sin_init(const char *ifname, int *e)
     strcpy(req.nr_name, ifname);
     req.nr_version = NETMAP_API;
     req.nr_flags = NR_REG_NIC_SW;
+    req.nr_ringid |= NETMAP_NO_TX_POLL;
     if (ioctl(sip->netmap_fd, NIOCREGIF, &req) < 0) {
         _SET_ERR(e, errno);
         goto er_undo_1;
