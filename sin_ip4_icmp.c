@@ -48,9 +48,9 @@ sin_ip4_icmp_taste(struct sin_pkt *pkt)
     }
     p = (struct ip4_icmp_en10t *)pkt->buf;
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
-    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, icmp_type %hhu\n",
-      pkt, p->ether_type, p->ip4_icmp.iphdr.ip_v, p->ip4_icmp.iphdr.ip_p,
-      p->ip4_icmp.icmphdr.icmp_type);
+    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, "
+      "icmp_type %hhu\n", pkt, p->ether_type, p->ip4_icmp.iphdr.ip_v,
+      p->ip4_icmp.iphdr.ip_p, p->ip4_icmp.icmphdr.icmp_type);
 #endif
     if (p->ether_type != htons(0x0800)) {
         return (0);
@@ -62,6 +62,35 @@ sin_ip4_icmp_taste(struct sin_pkt *pkt)
         return (0);
     }
     if (p->ip4_icmp.icmphdr.icmp_type != 0x8) {
+        return (0);
+    }
+    return (1);
+}
+
+int
+sin_ip4_icmp_repl_taste(struct sin_pkt *pkt)
+{
+    struct ip4_icmp_en10t *p;
+
+    if (pkt->len < SIN_IP4_ICMP_MINLEN) {
+        return (0);
+    }
+    p = (struct ip4_icmp_en10t *)pkt->buf;
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
+    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, "
+      "icmp_type %hhu\n", pkt, p->ether_type, p->ip4_icmp.iphdr.ip_v,
+      p->ip4_icmp.iphdr.ip_p, p->ip4_icmp.icmphdr.icmp_type);
+#endif
+    if (p->ether_type != htons(0x0800)) {
+        return (0);
+    }
+    if (p->ip4_icmp.iphdr.ip_v != 0x4) {
+        return (0);
+    }
+    if (p->ip4_icmp.iphdr.ip_p != 0x1) {
+        return (0);
+    }
+    if (p->ip4_icmp.icmphdr.icmp_type != 0x0) {
         return (0);
     }
     return (1);
