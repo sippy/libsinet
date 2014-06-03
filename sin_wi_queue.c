@@ -110,6 +110,11 @@ void
 sin_wi_queue_put_items(struct sin_list *lst, struct sin_wi_queue *queue)
 {
 
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 4)
+    printf("sin_wi_queue_put_items(%s): adding %u items\n", queue->name,
+      lst->len);
+#endif
+
     pthread_mutex_lock(&queue->mutex);
     if (queue->head == NULL) {
         queue->head = lst->head;
