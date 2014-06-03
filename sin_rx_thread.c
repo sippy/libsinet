@@ -97,7 +97,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     struct sin_list pkts_in;
     const char *tname;
     struct pollfd fds;
-    int nready;
+    int nready, ndeq;
 
     tname = sin_wrk_thread_get_tname(&srtp->t);
     fds.fd = srtp->rx_zone->netmap_fd;
@@ -106,7 +106,10 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     for (;;) {
         nready = poll(&fds, 1, 10);
         if (nready > 0 && !nm_ring_empty(srtp->rx_ring)) {
-            dequeue_pkts(srtp->rx_ring, srtp->rx_zone, &pkts_in);
+            ndeq = dequeue_pkts(srtp->rx_ring, srtp->rx_zone, &pkts_in);
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 4)
+            printf("%s: dequeued %d packets\n", tname, ndeq);
+#endif
             if (!SIN_LIST_IS_EMPTY(&pkts_in)) {
                 sin_pkt_sorter_proc(srtp->rx_sort, &pkts_in);
                 SIN_LIST_RESET(&pkts_in);
