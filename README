@@ -1,3 +1,6 @@
+libsinet - S is for "Speed"
+---------------------------
+
 This is libsinet, lightweight userland implementation of the UDP/IPv4 stack
 designed to plug into the netmap framework.
 
@@ -21,3 +24,12 @@ Some of the major differences between libsinet and netold:
    sin_pkt_release(). If application needs more packets for sending
    the data out than it gets out of sin_recv(), additional packets
    may be produced by sin_pkg_alloc()
+
+Caveats:
+ - In order for pass-through mode between hardware and software rings to
+   be working, any hardware checksum off-loading on the interface to be used
+   by the libsinet is to be disabled. On em(4) driver, for example this works:
+
+    # ifconfig emX -rxcsum
+    # ifconfig emX -txcsum
+
