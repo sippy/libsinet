@@ -134,10 +134,12 @@ sin_tx_thread(struct sin_tx_thread *sttp)
 #endif
                     sin_pkt_zone_copy(pkt, pkt_out);
                 }
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 4)
                 printf("%s: sin_tx_thread: sending %p packet of length %u out\n",
                   tname, pkt_out, pkt_out->len);
-                sin_ip4_icmp_debug(pkt_out);
+                if (sin_ip4_icmp_repl_taste(pkt_out)) {
+                    sin_ip4_icmp_debug(pkt_out);
+                }
 #endif
                 pkt_next = SIN_ITER_NEXT(pkt);
                 pkt->t.sin_next = NULL;
