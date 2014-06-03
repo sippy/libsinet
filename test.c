@@ -19,7 +19,7 @@ main(int argc, char **argv)
         errx(1, "sin_init: %s", strerror(sin_err));
     }
 
-    sleep(160);
+    sleep(600);
 
     sin_destroy(sinp);
 
