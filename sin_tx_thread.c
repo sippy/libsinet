@@ -8,6 +8,7 @@
 #ifdef SIN_DEBUG
 #include <stdio.h>
 #endif
+#include <sched.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -109,7 +110,6 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     tx_zone = sttp->tx_zone;
     SIN_LIST_RESET(&pkts_out);
     for (;;) {
-        ioctl(tx_zone->netmap_fd, NIOCTXSYNC, NULL);
         ntx = tx_ring_nslots(tx_ring);
         if (ntx == 0) {
             goto nextcycle;
@@ -162,6 +162,10 @@ sin_tx_thread(struct sin_tx_thread *sttp)
 #endif
         }
 nextcycle:
+        if (!nm_ring_empty(tx_ring)) {
+            ioctl(tx_zone->netmap_fd, NIOCTXSYNC, NULL);
+            sched_yield();
+        }
         if (sin_wrk_thread_check_ctrl(&sttp->t) == SIGTERM) {
             break;
         }
