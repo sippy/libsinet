@@ -6,3 +6,4 @@ struct sin_rx_thread *sin_rx_thread_ctor(const char *tnane,
   struct netmap_ring *rx_ring, struct sin_pkt_zone *rx_zone,
   struct sin_pkt_sorter *rx_sort, int *sin_err);
 void sin_rx_thread_dtor(struct sin_rx_thread *srtp);
+void sin_rx_thread_wakeup(struct sin_rx_thread *srtp);
