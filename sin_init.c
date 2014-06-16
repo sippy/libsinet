@@ -17,6 +17,7 @@
 #include "sin_errno.h"
 #include "sin_stance.h"
 #include "sin_pkt_zone.h"
+#include "sin_ringmon_thread.h"
 #include "sin_rx_thread.h"
 #include "sin_tx_thread.h"
 #include "sin_pkt_sorter.h"
@@ -144,12 +145,20 @@ sin_init(const char *ifname, int *e)
         goto er_undo_10;
     }
 
+    sip->rx_mon_thread = sin_ringmon_thread_ctor("rx_mon", sip->netmap_fd,
+      e);
+    if (sip->rx_mon_thread == NULL) {
+        goto er_undo_11;
+    }
+
     SIN_INCREF(sip);
     return (void *)sip;
 #if 0
+er_undo_12:
+    sin_ringmon_thread_dtor(sip->rx_mon_thread);
+#endif
 er_undo_11:
     sin_rx_thread_dtor(sip->rx_hst_thread);
-#endif
 er_undo_10:
     sin_pkt_sorter_dtor(sip->rx_hst_sort);
 er_undo_9:

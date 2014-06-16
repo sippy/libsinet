@@ -9,6 +9,7 @@
 #include "include/libsinet.h"
 #include "sin_type.h"
 #include "sin_stance.h"
+#include "sin_ringmon_thread.h"
 #include "sin_rx_thread.h"
 #include "sin_tx_thread.h"
 #include "sin_pkt_zone.h"
@@ -22,6 +23,7 @@ sin_destroy(void *p)
     sip = (struct sin_stance *)p;
     SIN_TYPE_ASSERT(sip, _SIN_TYPE_SINSTANCE);
 
+    sin_ringmon_thread_dtor(sip->rx_mon_thread);
     sin_rx_thread_dtor(sip->rx_hst_thread);
     sin_pkt_sorter_dtor(sip->rx_hst_sort);
     sin_rx_thread_dtor(sip->rx_phy_thread);
