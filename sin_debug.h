@@ -1,3 +1,3 @@
 #if defined(SIN_DEBUG)
-#define SIN_DEBUG_WAVE 3
+#define SIN_DEBUG_WAVE 4
 #endif
