@@ -177,6 +177,8 @@ sin_rx_thread_dtor(struct sin_rx_thread *srtp)
 void
 sin_rx_thread_wakeup(struct sin_rx_thread *srtp)
 {
-
-     sin_wi_queue_put_item(srtp->sigio, srtp->io_notify);
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 5)
+     printf("sin_rx_thread_wakeup(%s)\n", sin_wrk_thread_get_tname(&srtp->t));
+#endif
+     sin_wi_queue_put_item(srtp->sigio, srtp->io_notify, 1);
 }

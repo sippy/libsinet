@@ -98,7 +98,7 @@ void
 sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp)
 {
 
-    sin_wi_queue_put_item(swtp->sigterm, swtp->ctrl_queue);
+    sin_wi_queue_put_item(swtp->sigterm, swtp->ctrl_queue, 1);
     if (swtp->ctrl_notify_queue != NULL) {
         sin_wi_queue_pump(swtp->ctrl_notify_queue);
     }
