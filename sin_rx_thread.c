@@ -1,4 +1,3 @@
-#include <sys/ioctl.h>
 #include <net/netmap_user.h>
 #include <errno.h>
 #include <poll.h>

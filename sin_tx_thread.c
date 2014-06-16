@@ -16,7 +16,6 @@
 #include "sin_list.h"
 #include "sin_debug.h"
 #include "sin_errno.h"
-#include "sin_stance.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
 #include "sin_mem_fast.h"
