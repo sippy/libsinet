@@ -150,13 +150,20 @@ sin_init(const char *ifname, int *e)
     if (sip->rx_mon_thread == NULL) {
         goto er_undo_11;
     }
+    if (sin_ringmon_register(sip->rx_mon_thread, sip->rx_phy_ring,
+      (void (*)(void *))&sin_rx_thread_wakeup, sip->rx_phy_thread, e) < 0) {
+        goto er_undo_12;
+    }
+    if (sin_ringmon_register(sip->rx_mon_thread, sip->rx_hst_ring,
+      (void (*)(void *))&sin_rx_thread_wakeup, sip->rx_hst_thread, e) < 0) {
+        goto er_undo_12;
+    }
 
     SIN_INCREF(sip);
     return (void *)sip;
-#if 0
+
 er_undo_12:
     sin_ringmon_thread_dtor(sip->rx_mon_thread);
-#endif
 er_undo_11:
     sin_rx_thread_dtor(sip->rx_hst_thread);
 er_undo_10:
