@@ -1,6 +1,7 @@
 #include <net/netmap_user.h>
 #include <errno.h>
 #include <poll.h>
+#include <sched.h>
 #include <signal.h>
 #ifdef SIN_DEBUG
 #include <assert.h>
@@ -29,30 +30,49 @@ struct sin_ringmon_thread
     struct ringmon_client *first;
 };
 
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 5)
+static void
+ring_debug(const char *tname, struct netmap_ring *ring)
+{
+     printf("%s: debug_ring: ring->head = %u, ring->cur = %u, "
+       "ring->tail = %u\n", tname, ring->head, ring->cur, ring->tail);
+}
+#else
+#define	ring_debug(a, b)	{}
+#endif
+
 static void
 sin_ringmon_thread(struct sin_ringmon_thread *srmtp)
 {
     const char *tname;
     struct pollfd fds;
     struct ringmon_client *rmcp;
-    int nready;
+    int nready, yield;
 
     tname = sin_wrk_thread_get_tname(&srmtp->t);
     fds.fd = srmtp->netmap_fd;
     fds.events = POLLIN;
+    yield = 0;
     for (;;) {
         if (sin_wrk_thread_check_ctrl(&srmtp->t) == SIGTERM) {
             break;
         }
         nready = poll(&fds, 1, 10);
-        if (nready <= 0 || srmtp->first == NULL) {
+        if (nready <= 0 || (fds.revents & POLLIN) == 0 ||
+          srmtp->first == NULL) {
             continue;
         }
         for (rmcp = srmtp->first; rmcp != NULL; rmcp =  SIN_ITER_NEXT(rmcp)) {
             if (nm_ring_empty(rmcp->rx_ring)) {
+                ring_debug(tname, rmcp->rx_ring);
                 continue;
             }
             rmcp->client_wakeup(rmcp->wakeup_arg);
+            yield = 1;
+        }
+        if (yield != 0) {
+            sched_yield();
+            yield = 0;
         }
     }
 }
