@@ -19,21 +19,29 @@ void
 sin_destroy(void *p)
 {
     struct sin_stance *sip;
+    int i;
 
     sip = (struct sin_stance *)p;
     SIN_TYPE_ASSERT(sip, _SIN_TYPE_SINSTANCE);
 
     sin_ringmon_thread_dtor(sip->rx_mon_thread);
-    sin_rx_thread_dtor(sip->rx_hst_thread);
-    sin_pkt_sorter_dtor(sip->rx_hst_sort);
-    sin_rx_thread_dtor(sip->rx_phy_thread);
-    sin_pkt_sorter_dtor(sip->rx_phy_sort);
-    sin_tx_thread_dtor(sip->tx_hst_thread);
-    sin_tx_thread_dtor(sip->tx_phy_thread);
-    sin_pkt_zone_dtor(sip->rx_hst_zone);
-    sin_pkt_zone_dtor(sip->tx_hst_zone);
-    sin_pkt_zone_dtor(sip->rx_phy_zone);
-    sin_pkt_zone_dtor(sip->tx_phy_zone);
+    sin_rx_thread_dtor(sip->hst.rx_thread);
+    sin_pkt_sorter_dtor(sip->hst.rx_sort);
+    for (i = 0; i < sip->nrings; i++) {
+        sin_rx_thread_dtor(sip->phy[i].rx_thread);
+        sin_pkt_sorter_dtor(sip->phy[i].rx_sort);
+    }
+    sin_tx_thread_dtor(sip->hst.tx_thread);
+    for (i = 0; i < sip->nrings; i++) {
+        sin_tx_thread_dtor(sip->phy[i].tx_thread);
+    }
+    sin_pkt_zone_dtor(sip->hst.rx_zone);
+    sin_pkt_zone_dtor(sip->hst.tx_zone);
+    for (i = 0; i < sip->nrings; i++) {
+        sin_pkt_zone_dtor(sip->phy[i].rx_zone);
+        sin_pkt_zone_dtor(sip->phy[i].tx_zone);
+    }
+    free(sip->phy);
     close(sip->netmap_fd);
     free(sip);
 }
