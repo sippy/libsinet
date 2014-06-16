@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "sin_debug.h"
 #include "sin_type.h"
 #include "sin_errno.h"
 #include "sin_list.h"
@@ -75,14 +76,23 @@ sin_wi_queue_dtor(struct sin_wi_queue *queue)
     free(queue);
 }
 
-void
-sin_wi_queue_put_item(void *wi, struct sin_wi_queue *queue)
+int
+sin_wi_queue_put_item(void *wi, struct sin_wi_queue *queue,
+  unsigned int maxqlen)
 {
     struct sin_type_linkable *stlp;
 
     stlp = (struct sin_type_linkable *)wi;
 
     pthread_mutex_lock(&queue->mutex);
+    if (maxqlen > 0 && queue->length >= maxqlen) {
+        if (queue->nwait > 0) {
+            /* notify worker thread */
+            pthread_cond_signal(&queue->cond);
+        }
+        pthread_mutex_unlock(&queue->mutex);
+        return (-1);
+    }
 
     stlp->sin_next = NULL;
     if (queue->head == NULL) {
@@ -104,6 +114,7 @@ sin_wi_queue_put_item(void *wi, struct sin_wi_queue *queue)
     }
 
     pthread_mutex_unlock(&queue->mutex);
+    return (0);
 }
 
 void
@@ -177,6 +188,7 @@ sin_wi_queue_get_item(struct sin_wi_queue *queue, int waitok,
     queue->length -= 1;
     pthread_mutex_unlock(&queue->mutex);
 
+    wi->sin_next = NULL;
     return (wi);
 }
 
