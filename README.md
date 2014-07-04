@@ -31,5 +31,7 @@ designed to plug into the [netmap](https://code.google.com/p/netmap/) framework.
 
 -  In order for pass-through mode to work between hardware and software rings, hardware checksum off-loading must be disabled. As an example, checksum off-loading can be disabled for the em(4) driver as follows:
 
-    ifconfig emX -rxcsum
-    ifconfig emX -txcsum
+```
+    # ifconfig emX -rxcsum
+    # ifconfig emX -txcsum
+```
