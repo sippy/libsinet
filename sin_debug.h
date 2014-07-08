@@ -25,6 +25,6 @@
  *
  */
 
-#if defined(SIN_DEBUG)
+#if defined(SIN_DEBUG) && !defined(SIN_DEBUG_WAVE)
 #define SIN_DEBUG_WAVE 4
 #endif
