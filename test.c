@@ -14,7 +14,7 @@ main(int argc, char **argv)
     int sin_err;
 
     sin_err = 0;
-    sinp = sin_init("em1", &sin_err);
+    sinp = sin_init("igb0", &sin_err);
     if (sinp == NULL) {
         errx(1, "sin_init: %s", strerror(sin_err));
     }
