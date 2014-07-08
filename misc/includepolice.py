@@ -61,7 +61,7 @@ if __name__ == '__main__':
             i2 = sfl_includes[:]
             i2.append(include)
             second_pass(fname_bak, fname, i2)
-            rval = call(["make", "clean", "test"], stdout = devnull, \
+            rval = call(["make", "-DSIN_DEBUG", "SIN_DEBUG_WAVE=0", "clean", "test"], stdout = devnull, \
               stderr = devnull)
             remove(fname)
             if rval == 0:
@@ -75,4 +75,3 @@ if __name__ == '__main__':
     else:
         sys.exit(0)
     sys.exit(1)
-
