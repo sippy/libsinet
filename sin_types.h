@@ -64,3 +64,5 @@ struct sin_type_linkable {
   (stp)->sin_type == _SIN_TYPE_SIGNAL || (stp)->sin_type == _SIN_TYPE_ITERABLE)
 
 #define SIN_ITER_NEXT(stlp)	((void *)((stlp)->t.sin_next))
+
+#define CALL_METHOD(obj, method, args...) (obj)->method(obj, ## args)
