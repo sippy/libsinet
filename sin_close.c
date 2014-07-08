@@ -33,7 +33,7 @@
 #include <stdlib.h>
 
 #include "include/libsinet.h"
-#include "sin_type.h"
+#include "sin_types.h"
 #include "libsinet_internal.h"
 
 int

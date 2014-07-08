@@ -25,59 +25,42 @@
  *
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
+struct sin_type {
+    unsigned int sin_type;
+    char type_data[0];
+};
 
-#include "include/libsinet.h"
-#include "sin_types.h"
-#include "libsinet_internal.h"
-#include "sin_errno.h"
-#include "sin_stance.h"
+struct sin_type_linkable {
+    unsigned int sin_type;
+    struct sin_type_linkable *sin_next;
+    char type_data[0];
+};
 
-static inline struct sin_stance *
-_sip_incref(struct sin_stance *sip)
-{
+#define _SIN_TYPE_SINSTANCE     693750532
+#define _SIN_TYPE_SOCKET        4061681943
+#define _SIN_TYPE_ADDR          489855194
+#define _SIN_TYPE_QUEUE         1319882625
+#define _SIN_TYPE_EVENT         3336537370
+#define _SIN_TYPE_PKT_ZONE      720778432
+#define _SIN_TYPE_PKT           639956139
+#define _SIN_TYPE_WI_QUEUE      1938993589
+#define _SIN_TYPE_WRK_THREAD    1612654994
+#define _SIN_TYPE_SIGNAL        229112560
+#define _SIN_TYPE_PKT_SORTER	1943693179
+#define _SIN_TYPE_ITERABLE      962174450
 
-    SIN_INCREF(sip);
-    if (sip->sin_nref == 1) {
-        SIN_DECREF(sip);
-        return (NULL);
-    }
-    return (sip);
-}
+#ifdef SIN_DEBUG
+# define SIN_TYPE_ASSERT(ssp, model_type) \
+  assert((ssp)->t.sin_type == (model_type))
+#else
+# define SIN_TYPE_ASSERT(ssp, model_type) {}
+#endif
 
-void *
-sin_socket(void *sin_stance, int domain, int type, int protocol, int *e)
-{
-    struct sin_socket *ssp;
-    struct sin_stance *sip;
+#define SIN_TYPE_SET(ssp, type) {(ssp)->t.sin_type = (type);}
 
-    sip = (struct sin_stance *)sin_stance;
-    sip = _sip_incref(sip);
-    if (sip == NULL) {
-        _SET_ERR(e, EINVAL);
-        return (NULL);
-    }
+#define SIN_TYPE_LINK(cp, np) (cp)->t.sin_next = (struct sin_type_linkable *)(np)
 
-    if (domain != PF_INET || type != SOCK_DGRAM || protocol != 0) {
-        _SET_ERR(e, EPROTONOSUPPORT);
-        SIN_DECREF(sip);
-        return (NULL);
-    }
+#define SIN_TYPE_IS_LINKABLE(stp)  ((stp)->sin_type == _SIN_TYPE_PKT || \
+  (stp)->sin_type == _SIN_TYPE_SIGNAL || (stp)->sin_type == _SIN_TYPE_ITERABLE)
 
-    ssp = malloc(sizeof(struct sin_socket));
-    if (ssp == NULL) {
-        _SET_ERR(e, ENOMEM);
-        SIN_DECREF(sip);
-        return (NULL);
-    }
-    memset(ssp, '\0', sizeof(struct sin_socket));
-    SIN_TYPE_SET(ssp, _SIN_TYPE_SOCKET);
-    ssp->sip = sip;
-
-    SIN_INCREF(ssp);
-    return ((void *)ssp);
-}
+#define SIN_ITER_NEXT(stlp)	((void *)((stlp)->t.sin_next))

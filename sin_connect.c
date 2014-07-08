@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sin_type.h"
+#include "sin_types.h"
 #include "include/libsinet.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
