@@ -30,6 +30,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "sin_types.h"
 #include "sin_debug.h"
@@ -38,26 +39,40 @@
 #include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
 
+struct sin_wrk_thread_private {
+    pthread_t tid;
+    char *tname;
+    struct sin_wi_queue *ctrl_queue;
+    struct sin_wi_queue *ctrl_notify_queue;
+    struct sin_signal *sigterm;
+    void *(*runner)(void *);
+};
+
+static void sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp);
+static int sin_wrk_thread_check_ctrl(struct sin_type_wrk_thread *swtp);
+static void sin_wrk_thread_notify_on_ctrl(struct sin_type_wrk_thread *swtp,
+  struct sin_wi_queue *ctrl_notify_queue);
+static const char *sin_wrk_thread_get_tname(struct sin_type_wrk_thread *swtp);
+
 static void
 sin_wrk_thread_runner(struct sin_type_wrk_thread *swtp)
 {
 
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-    printf("%s has started\n", swtp->tname);
+    printf("%s has started\n", swtp->pvt->tname);
 #endif
-    swtp->runner(swtp);
+    swtp->pvt->runner(swtp);
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-    printf("%s has stopped\n", swtp->tname);
+    printf("%s has stopped\n", swtp->pvt->tname);
 #endif
 }
 
-const char *
+static const char *
 sin_wrk_thread_get_tname(struct sin_type_wrk_thread *swtp)
 {
 
-    return (swtp->tname);
+    return (swtp->pvt->tname);
 }
-
 
 int
 sin_wrk_thread_ctor(struct sin_type_wrk_thread *swtp, const char *tname,
@@ -66,75 +81,90 @@ sin_wrk_thread_ctor(struct sin_type_wrk_thread *swtp, const char *tname,
     int rval;
 
     swtp->sin_type = _SIN_TYPE_WRK_THREAD;
-    asprintf(&swtp->tname, "worker thread(%s)", tname);
-    if (swtp->tname == NULL) {
+    swtp->pvt = malloc(sizeof(struct sin_wrk_thread_private));
+    if (swtp->pvt == NULL) {
         _SET_ERR(e, ENOMEM);
         return (-1);
     }
-    swtp->ctrl_queue = sin_wi_queue_ctor(e, "%s control queue", tname);
-    if (swtp->ctrl_queue == NULL) {
+    memset(swtp->pvt, '\0', sizeof(struct sin_wrk_thread_private));
+    asprintf(&swtp->pvt->tname, "worker thread(%s)", tname);
+    if (swtp->pvt->tname == NULL) {
+        _SET_ERR(e, ENOMEM);
+        goto er_undo_0;
+    }
+    swtp->pvt->ctrl_queue = sin_wi_queue_ctor(e, "%s control queue", tname);
+    if (swtp->pvt->ctrl_queue == NULL) {
         goto er_undo_1;
     }
-    swtp->sigterm = sin_signal_ctor(SIGTERM, e);
-    if (swtp->sigterm == NULL) {
+    swtp->pvt->sigterm = sin_signal_ctor(SIGTERM, e);
+    if (swtp->pvt->sigterm == NULL) {
         goto er_undo_2;
     }
-    swtp->runner = start_routine;
-    rval = pthread_create(&swtp->tid, NULL, (void *(*)(void *))&sin_wrk_thread_runner, swtp);
+    swtp->pvt->runner = start_routine;
+    rval = pthread_create(&swtp->pvt->tid, NULL, (void *(*)(void *))&sin_wrk_thread_runner, swtp);
     if (rval != 0) {
         _SET_ERR(e, rval);
         goto er_undo_3;
     }
+    swtp->dtor = &sin_wrk_thread_dtor;
+    swtp->check_ctrl = &sin_wrk_thread_check_ctrl;
+    swtp->notify_on_ctrl = &sin_wrk_thread_notify_on_ctrl;
+    swtp->get_tname = &sin_wrk_thread_get_tname;
     return (0);
 
 er_undo_3:
-    sin_signal_dtor(swtp->sigterm);
+    sin_signal_dtor(swtp->pvt->sigterm);
 er_undo_2:
-    sin_wi_queue_dtor(swtp->ctrl_queue);
+    sin_wi_queue_dtor(swtp->pvt->ctrl_queue);
 er_undo_1:
-    free(swtp->tname);
+    free(swtp->pvt->tname);
+er_undo_0:
+    free(swtp->pvt);
     return (-1);
 }
 
-int
+static int
 sin_wrk_thread_check_ctrl(struct sin_type_wrk_thread *swtp)
 {
     struct sin_signal *ssign;
     int signum;
 
-    ssign = sin_wi_queue_get_item(swtp->ctrl_queue, 0,  0);
+    ssign = sin_wi_queue_get_item(swtp->pvt->ctrl_queue, 0,  0);
     if (ssign == NULL) {
         return (-1);
     }
     signum = sin_signal_get_signum(ssign);
-    if (ssign != swtp->sigterm) {
+    if (ssign != swtp->pvt->sigterm) {
         sin_signal_dtor(ssign);
     }
     return (signum);
 }
 
-void
+static void
 sin_wrk_thread_notify_on_ctrl(struct sin_type_wrk_thread *swtp,
   struct sin_wi_queue *ctrl_notify_queue)
 {
 
-    swtp->ctrl_notify_queue = ctrl_notify_queue;
+    swtp->pvt->ctrl_notify_queue = ctrl_notify_queue;
 }
 
-void
+static void
 sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp)
 {
+    struct sin_wrk_thread_private *pp;
 
-    sin_wi_queue_put_item(swtp->sigterm, swtp->ctrl_queue, 1);
-    if (swtp->ctrl_notify_queue != NULL) {
-        sin_wi_queue_pump(swtp->ctrl_notify_queue);
+    pp = swtp->pvt;
+    sin_wi_queue_put_item(pp->sigterm, pp->ctrl_queue, 1);
+    if (pp->ctrl_notify_queue != NULL) {
+        sin_wi_queue_pump(pp->ctrl_notify_queue);
     }
-    pthread_join(swtp->tid, NULL);
-    sin_signal_dtor(swtp->sigterm);
+    pthread_join(pp->tid, NULL);
+    sin_signal_dtor(pp->sigterm);
     /* Drain ctrl queue */
     while (sin_wrk_thread_check_ctrl(swtp) != -1) {
         continue;
     }
-    sin_wi_queue_dtor(swtp->ctrl_queue);
-    free(swtp->tname);
+    sin_wi_queue_dtor(pp->ctrl_queue);
+    free(pp->tname);
+    free(pp);
 }

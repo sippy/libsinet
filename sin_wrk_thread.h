@@ -25,22 +25,34 @@
  *
  */
 
+struct sin_type_wrk_thread;
+struct sin_wi_queue;
+
+typedef void (*sin_wrk_thread_dtor_t)(struct sin_type_wrk_thread *);
+typedef int (*sin_wrk_thread_method_0_t)(struct sin_type_wrk_thread *);
+typedef void (*sin_wrk_thread_notify_on_ctrl_t)(struct sin_type_wrk_thread *,
+  struct sin_wi_queue *ctrl_notify_queue);
+typedef const char * (*sin_wrk_thread_get_tname_t)(struct sin_type_wrk_thread *);
+
+struct sin_wrk_thread_private;
+
 struct sin_type_wrk_thread {
-    unsigned int sin_type;
+    unsigned int sin_type; /* Must be the first member */
+    sin_wrk_thread_dtor_t dtor;
+    sin_wrk_thread_method_0_t check_ctrl;
+    sin_wrk_thread_notify_on_ctrl_t notify_on_ctrl;
+    sin_wrk_thread_get_tname_t get_tname;
+    struct sin_wrk_thread_private *pvt;
+#if 0
     pthread_t tid;
     char *tname;
     struct sin_wi_queue *ctrl_queue;
     struct sin_wi_queue *ctrl_notify_queue;
     struct sin_signal *sigterm;
     void *(*runner)(void *);
+#endif
     char type_data[0];
 };
 
 int sin_wrk_thread_ctor(struct sin_type_wrk_thread *swtp, const char *tname,
   void *(*start_routine)(void *), int *sin_err);
-void sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp);
-int sin_wrk_thread_check_ctrl(struct sin_type_wrk_thread *swtp);
-void sin_wrk_thread_notify_on_ctrl(struct sin_type_wrk_thread *swtp,
-  struct sin_wi_queue *ctrl_notify_queue);
-const char *sin_wrk_thread_get_tname(struct sin_type_wrk_thread *swtp);
-
