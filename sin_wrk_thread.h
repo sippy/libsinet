@@ -43,15 +43,6 @@ struct sin_type_wrk_thread {
     sin_wrk_thread_notify_on_ctrl_t notify_on_ctrl;
     sin_wrk_thread_get_tname_t get_tname;
     struct sin_wrk_thread_private *pvt;
-#if 0
-    pthread_t tid;
-    char *tname;
-    struct sin_wi_queue *ctrl_queue;
-    struct sin_wi_queue *ctrl_notify_queue;
-    struct sin_signal *sigterm;
-    void *(*runner)(void *);
-#endif
-    char type_data[0];
 };
 
 int sin_wrk_thread_ctor(struct sin_type_wrk_thread *swtp, const char *tname,
