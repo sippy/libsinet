@@ -76,12 +76,12 @@ sin_ringmon_thread(struct sin_ringmon_thread *srmtp)
     struct ringmon_client *rmcp;
     int nready, yield;
 
-    tname = sin_wrk_thread_get_tname(&srmtp->t);
+    tname = CALL_METHOD(&srmtp->t, get_tname);
     fds.fd = srmtp->netmap_fd;
     fds.events = POLLIN;
     yield = 0;
     for (;;) {
-        if (sin_wrk_thread_check_ctrl(&srmtp->t) == SIGTERM) {
+        if (CALL_METHOD(&srmtp->t, check_ctrl) == SIGTERM) {
             break;
         }
         nready = poll(&fds, 1, 10);
@@ -153,7 +153,7 @@ sin_ringmon_thread_dtor(struct sin_ringmon_thread *srmtp)
     struct ringmon_client *rmcp, *rmcp_next;
 
     SIN_TYPE_ASSERT(srmtp, _SIN_TYPE_WRK_THREAD);
-    sin_wrk_thread_dtor(&srmtp->t);
+    CALL_METHOD(&srmtp->t, dtor);
     for (rmcp = srmtp->first; rmcp != NULL; rmcp = rmcp_next) {
         rmcp_next = SIN_ITER_NEXT(rmcp);
         free(rmcp);

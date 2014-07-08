@@ -128,7 +128,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     unsigned int ntx, i;
     const char *tname;
 
-    tname = sin_wrk_thread_get_tname(&sttp->t);
+    tname = CALL_METHOD(&sttp->t, get_tname);
 
     tx_ring = sttp->tx_ring;
     tx_zone = sttp->tx_zone;
@@ -186,7 +186,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
 #endif
         }
 nextcycle:
-        if (sin_wrk_thread_check_ctrl(&sttp->t) == SIGTERM) {
+        if (CALL_METHOD(&sttp->t, check_ctrl) == SIGTERM) {
             break;
         }
     }
@@ -215,7 +215,7 @@ sin_tx_thread_ctor(const char *tname, struct netmap_ring *tx_ring,
       (void *(*)(void *))&sin_tx_thread, e) != 0) {
         goto er_undo_2;
     }
-    sin_wrk_thread_notify_on_ctrl(&sttp->t, sttp->outpkt_queue);
+    CALL_METHOD(&sttp->t, notify_on_ctrl, sttp->outpkt_queue);
 
     return (sttp);
 
@@ -238,7 +238,7 @@ sin_tx_thread_dtor(struct sin_tx_thread *sttp)
 {
 
     SIN_TYPE_ASSERT(sttp, _SIN_TYPE_WRK_THREAD);
-    sin_wrk_thread_dtor(&sttp->t);
+    CALL_METHOD(&sttp->t, dtor);
     sin_wi_queue_dtor(sttp->outpkt_queue);
     free(sttp);
 }

@@ -128,7 +128,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     int ndeq;
     struct sin_signal *sigio;
 
-    tname = sin_wrk_thread_get_tname(&srtp->t);
+    tname = CALL_METHOD(&srtp->t, get_tname);
     SIN_LIST_RESET(&pkts_in);
     for (;;) {
         sigio = sin_wi_queue_get_item(srtp->io_notify, 1,  1);
@@ -142,7 +142,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
                 SIN_LIST_RESET(&pkts_in);
             }
         }
-        if (sin_wrk_thread_check_ctrl(&srtp->t) == SIGTERM) {
+        if (CALL_METHOD(&srtp->t, check_ctrl) == SIGTERM) {
             break;
         }
         spin_ring(tname, srtp->rx_ring, srtp->rx_zone);
@@ -178,7 +178,7 @@ sin_rx_thread_ctor(const char *tname, struct netmap_ring *rx_ring,
       (void *(*)(void *))&sin_rx_thread, e) != 0) {
         goto er_undo_3;
     }
-    sin_wrk_thread_notify_on_ctrl(&srtp->t, srtp->io_notify);
+    CALL_METHOD(&srtp->t, notify_on_ctrl, srtp->io_notify);
     return (srtp);
 
 er_undo_3:
@@ -195,7 +195,7 @@ sin_rx_thread_dtor(struct sin_rx_thread *srtp)
 {
 
     SIN_TYPE_ASSERT(srtp, _SIN_TYPE_WRK_THREAD);
-    sin_wrk_thread_dtor(&srtp->t);
+    CALL_METHOD(&srtp->t, dtor);
     sin_signal_dtor(srtp->sigio);
     sin_wi_queue_dtor(srtp->io_notify);
     free(srtp);
@@ -205,7 +205,7 @@ void
 sin_rx_thread_wakeup(struct sin_rx_thread *srtp)
 {
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 5)
-     printf("sin_rx_thread_wakeup(%s)\n", sin_wrk_thread_get_tname(&srtp->t));
+     printf("sin_rx_thread_wakeup(%s)\n", CALL_METHOD(&srtp->t, get_tname));
 #endif
      sin_wi_queue_put_item(srtp->sigio, srtp->io_notify, 1);
 }
