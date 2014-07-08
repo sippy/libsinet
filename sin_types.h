@@ -27,13 +27,11 @@
 
 struct sin_type {
     unsigned int sin_type;
-    char type_data[0];
 };
 
 struct sin_type_linkable {
     unsigned int sin_type;
     struct sin_type_linkable *sin_next;
-    char type_data[0];
 };
 
 #define _SIN_TYPE_SINSTANCE     693750532
