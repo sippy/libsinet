@@ -42,7 +42,6 @@
 #include "sin_errno.h"
 #include "sin_stance.h"
 #include "sin_pkt_zone.h"
-#include "sin_ringmon_thread.h"
 #include "sin_rx_thread.h"
 #include "sin_tx_thread.h"
 #include "sin_pkt_sorter.h"
@@ -55,7 +54,7 @@ sin_init(const char *ifname, int *e)
     struct sin_stance *sip;
     struct nmreq req;
     struct sin_wi_queue *tx_phy_queue, *tx_hst_queue;
-    int i;
+    int i, grr_error;
 
     sip = malloc(sizeof(struct sin_stance));
     if (sip == NULL) {
@@ -73,9 +72,7 @@ sin_init(const char *ifname, int *e)
     strcpy(req.nr_name, ifname);
     req.nr_version = NETMAP_API;
     req.nr_flags = NR_REG_NIC_SW;
-#if 0
     req.nr_ringid |= NETMAP_NO_TX_POLL;
-#endif
     if (ioctl(sip->netmap_fd, NIOCREGIF, &req) < 0) {
         _SET_ERR(e, errno);
         goto er_undo_1;
@@ -87,6 +84,12 @@ sin_init(const char *ifname, int *e)
         goto er_undo_1;
     }
     sip->nifp = NETMAP_IF(sip->mem, req.nr_offset);
+
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 6)
+    printf("number of tx rings: %d\n", req.nr_tx_rings);
+    printf("number of rx rings: %d\n", req.nr_rx_rings);
+#endif
+
     sip->nrings = req.nr_rx_rings;
     sip->phy = malloc(sizeof(struct wrk_set) * sip->nrings);
     if (sip->phy == NULL) {
@@ -94,15 +97,47 @@ sin_init(const char *ifname, int *e)
         goto er_undo_1;
     }
     memset(sip->phy, '\0', sizeof(struct wrk_set) * sip->nrings);
+
+    grr_error = 0;
     for (i = 0; i < sip->nrings; i++) {
+        sip->phy[i].queue_fd = (grr_error == 0) ? open("/dev/netmap", O_RDWR) : -1;
+        if (grr_error == 0 && sip->phy[i].queue_fd == -1) {
+            grr_error = 1;
+        }
+    }
+    sip->hst.queue_fd = (grr_error == 0) ? open("/dev/netmap", O_RDWR) : -1;
+    if (grr_error != 0 || sip->hst.queue_fd == -1) {
+        goto er_undo_2;
+    }
+
+    for (i = 0; i < sip->nrings; i++) {
+        memset(&req, '\0', sizeof(req));
+        strcpy(req.nr_name, ifname);
+        req.nr_version = NETMAP_API;
+        req.nr_flags = NR_REG_ONE_NIC;
+        req.nr_ringid = i;
+        req.nr_ringid |= NETMAP_NO_TX_POLL;
+        if (ioctl(sip->phy[i].queue_fd, NIOCREGIF, &req) < 0) {
+            _SET_ERR(e, errno);
+            goto er_undo_2;
+        }
         sip->phy[i].rx_ring = NETMAP_RXRING(sip->nifp, i);
         sip->phy[i].tx_ring = NETMAP_TXRING(sip->nifp, i);
     }
+
+    memset(&req, '\0', sizeof(req));
+    strcpy(req.nr_name, ifname);
+    req.nr_version = NETMAP_API;
+    req.nr_flags = NR_REG_SW;
+    req.nr_ringid |= NETMAP_NO_TX_POLL;
+    if (ioctl(sip->hst.queue_fd, NIOCREGIF, &req) < 0) {
+        _SET_ERR(e, errno);
+        goto er_undo_2;
+    }
     sip->hst.rx_ring = NETMAP_RXRING(sip->nifp, i);
     sip->hst.tx_ring = NETMAP_TXRING(sip->nifp, i);
+
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 6)
-    printf("number of tx rings: %d\n", req.nr_tx_rings);
-    printf("number of rx rings: %d\n", req.nr_rx_rings);
     printf(" number of tx slots(hw): %d available slots: %d\n",
       sip->phy[0].tx_ring->num_slots, sip->phy[0].tx_ring->tail -
       sip->phy[0].tx_ring->head);
@@ -124,39 +159,37 @@ sin_init(const char *ifname, int *e)
         sip->phy[i].tx_zone = sin_pkt_zone_ctor(sip->phy[i].tx_ring,
           sip->netmap_fd, e);
         if (sip->phy[i].tx_zone == NULL) {
-            goto er_undo_2;
+            goto er_undo_3;
         }
     }
     for (i = 0; i < sip->nrings; i++) {
         sip->phy[i].rx_zone = sin_pkt_zone_ctor(sip->phy[i].rx_ring,
           sip->netmap_fd, e);
         if (sip->phy[i].rx_zone == NULL) {
-            goto er_undo_3;
+            goto er_undo_4;
         }
     }
     sip->hst.tx_zone = sin_pkt_zone_ctor(sip->hst.tx_ring, sip->netmap_fd, e);
     if (sip->hst.tx_zone == NULL) {
-        goto er_undo_3;
+        goto er_undo_4;
     }
     sip->hst.rx_zone = sin_pkt_zone_ctor(sip->hst.rx_ring, sip->netmap_fd, e);
     if (sip->hst.rx_zone == NULL) {
-        goto er_undo_4;
+        goto er_undo_5;
     }
 
     for (i = 0; i < sip->nrings; i++) {
         char tname[64];
 
         sprintf(tname, "tx_phy #%d", i);
-        sip->phy[i].tx_thread = sin_tx_thread_ctor(tname,
-          sip->phy[i].tx_ring, sip->phy[i].tx_zone, e);
+        sip->phy[i].tx_thread = sin_tx_thread_ctor(tname, &sip->phy[i], e);
         if (sip->phy[i].tx_thread == NULL) {
-            goto er_undo_6;
+            goto er_undo_7;
         }
     }
-    sip->hst.tx_thread = sin_tx_thread_ctor("tx_hst #0", sip->hst.tx_ring,
-      sip->hst.tx_zone, e);
+    sip->hst.tx_thread = sin_tx_thread_ctor("tx_hst #0", &sip->hst, e);
     if (sip->hst.tx_thread == NULL) {
-        goto er_undo_6;
+        goto er_undo_7;
     }
 
     tx_hst_queue = sin_tx_thread_get_out_queue(sip->hst.tx_thread);
@@ -164,12 +197,12 @@ sin_init(const char *ifname, int *e)
         sip->phy[i].rx_sort = sin_pkt_sorter_ctor(
           (void *)sin_wi_queue_put_items, tx_hst_queue, e);
         if (sip->phy[i].rx_sort == NULL) {
-            goto er_undo_8;
+            goto er_undo_9;
         }
         tx_phy_queue = sin_tx_thread_get_out_queue(sip->phy[i].tx_thread);
         if (sin_pkt_sorter_reg(sip->phy[i].rx_sort, sin_ip4_icmp_taste,
           sin_ip4_icmp_proc, tx_phy_queue, e) != 0) {
-            goto er_undo_8;
+            goto er_undo_9;
         }
     }
 
@@ -177,10 +210,9 @@ sin_init(const char *ifname, int *e)
         char tname[64];
 
         sprintf(tname, "rx_phy #%d", i);
-        sip->phy[i].rx_thread = sin_rx_thread_ctor(tname, sip->phy[i].rx_ring,
-          sip->phy[i].rx_zone, sip->phy[i].rx_sort, e);
+        sip->phy[i].rx_thread = sin_rx_thread_ctor(tname, &sip->phy[i], e);
         if (sip->phy[i].rx_thread == NULL) {
-            goto er_undo_9;
+            goto er_undo_10;
         }
     }
 
@@ -188,78 +220,70 @@ sin_init(const char *ifname, int *e)
     sip->hst.rx_sort = sin_pkt_sorter_ctor((void *)sin_wi_queue_put_items,
       tx_phy_queue, e);
     if (sip->hst.rx_sort == NULL) {
-        goto er_undo_9;
-    }
-    sip->hst.rx_thread = sin_rx_thread_ctor("rx_hst #0", sip->hst.rx_ring,
-      sip->hst.rx_zone, sip->hst.rx_sort, e);
-    if (sip->hst.rx_thread == NULL) {
         goto er_undo_10;
     }
-
-    sip->rx_mon_thread = sin_ringmon_thread_ctor("rx_mon", sip->netmap_fd,
-      e);
-    if (sip->rx_mon_thread == NULL) {
+    sip->hst.rx_thread = sin_rx_thread_ctor("rx_hst #0", &sip->hst, e);
+    if (sip->hst.rx_thread == NULL) {
         goto er_undo_11;
-    }
-    for (i = 0; i < sip->nrings; i++) {
-        if (sin_ringmon_register(sip->rx_mon_thread, sip->phy[i].rx_ring,
-          (void (*)(void *))&sin_rx_thread_wakeup, sip->phy[i].rx_thread, e) < 0) {
-            goto er_undo_12;
-        }
-    }
-    if (sin_ringmon_register(sip->rx_mon_thread, sip->hst.rx_ring,
-      (void (*)(void *))&sin_rx_thread_wakeup, sip->hst.rx_thread, e) < 0) {
-        goto er_undo_12;
     }
 
     SIN_INCREF(sip);
     return (void *)sip;
 
-er_undo_12:
-    sin_ringmon_thread_dtor(sip->rx_mon_thread);
+#if 0
 er_undo_11:
     sin_rx_thread_dtor(sip->hst.rx_thread);
-er_undo_10:
+#endif
+er_undo_11:
     sin_pkt_sorter_dtor(sip->hst.rx_sort);
-er_undo_9:
+er_undo_10:
     for (i = 0; i < sip->nrings; i++) {
         if (sip->phy[i].rx_thread != NULL) {
             sin_rx_thread_dtor(sip->phy[i].rx_thread);
         }
     }
-er_undo_8:
+er_undo_9:
     for (i = 0; i < sip->nrings; i++) {
         if (sip->phy[i].rx_sort != NULL) {
             sin_pkt_sorter_dtor(sip->phy[i].rx_sort);
         }
     }
 #if 0
-er_undo_7:
+er_undo_8:
 #endif
     sin_tx_thread_dtor(sip->hst.tx_thread);
-er_undo_6:
+er_undo_7:
     for (i = 0; i < sip->nrings; i++) {
         if (sip->phy[i].tx_thread != NULL) {
             sin_tx_thread_dtor(sip->phy[i].tx_thread);
         }
     }
 #if 0
-er_undo_5:
+er_undo_6:
 #endif
     sin_pkt_zone_dtor(sip->hst.rx_zone);
-er_undo_4:
+er_undo_5:
     sin_pkt_zone_dtor(sip->hst.tx_zone);
-er_undo_3:
+er_undo_4:
     for (i = 0; i < sip->nrings; i++) {
         if (sip->phy[i].rx_zone != NULL) {
             sin_pkt_zone_dtor(sip->phy[i].rx_zone);
         }
     }
-er_undo_2:
+er_undo_3:
     for (i = 0; i < sip->nrings; i++) {
         if (sip->phy[i].tx_zone != NULL) {
             sin_pkt_zone_dtor(sip->phy[i].tx_zone);
         }
+    }
+er_undo_2:
+    for (i = 0; i < sip->nrings; i++) {
+        if (sip->phy[i].queue_fd != -1) {
+            close(sip->phy[i].queue_fd);
+        }
+    }
+    if (sip->hst.queue_fd != -1) {
+        close(sip->hst.queue_fd);
     }
     free(sip->phy);
 er_undo_1:

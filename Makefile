@@ -2,8 +2,8 @@ LIB=		sinet
 SHLIB_MAJOR=	0
 LIBTHREAD?=	pthread
 
-.if defined(SIN_DEBUG) || 1
-CFLAGS+=	-DSIN_DEBUG
+.if defined(SIN_DEBUG)
+CFLAGS+=	-g3 -O0 -DSIN_DEBUG
 . if defined(SIN_DEBUG_WAVE)
 CFLAGS+=	-DSIN_DEBUG_WAVE=${SIN_DEBUG_WAVE}
 . endif
@@ -17,8 +17,7 @@ SRCS=		include/libsinet.h sin_close.c libsinet_internal.h sin_socket.c \
 		sin_wrk_thread.c sin_tx_thread.c sin_tx_thread.h \
 		sin_ip4_icmp.c sin_ip4_icmp.h sin_list.h sin_destroy.c \
 		sin_debug.h sin_pkt_zone_fast.h sin_mem_fast.h sin_ip4.h \
-		sin_pkt_sorter.c sin_pkt_sorter.h sin_ringmon_thread.c \
-		sin_ringmon_thread.h
+		sin_pkt_sorter.c sin_pkt_sorter.h
 
 LDADD=		-l${LIBTHREAD}
 

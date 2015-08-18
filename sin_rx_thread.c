@@ -27,6 +27,7 @@
 
 #include <net/netmap_user.h>
 #include <errno.h>
+#include <poll.h>
 #include <signal.h>
 #ifdef SIN_DEBUG
 #include <assert.h>
@@ -42,6 +43,7 @@
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
 #include "sin_signal.h"
+#include "sin_stance.h"
 #include "sin_wrk_thread.h"
 #include "sin_rx_thread.h"
 #include "sin_pkt_sorter.h"
@@ -53,8 +55,7 @@ struct sin_rx_thread
     struct netmap_ring *rx_ring;
     struct sin_pkt_zone *rx_zone;
     struct sin_pkt_sorter *rx_sort;
-    struct sin_wi_queue *io_notify;
-    struct sin_signal *sigio;
+    int queue_fd;
 };
 
 static int
@@ -125,14 +126,16 @@ sin_rx_thread(struct sin_rx_thread *srtp)
 {
     struct sin_list pkts_in;
     const char *tname;
-    int ndeq;
-    struct sin_signal *sigio;
+    int ndeq, nready;
+    struct pollfd fds;
 
     tname = CALL_METHOD(&srtp->t, get_tname);
+    fds.fd = srtp->queue_fd;
+    fds.events = POLLIN;
     SIN_LIST_RESET(&pkts_in);
     for (;;) {
-        sigio = sin_wi_queue_get_item(srtp->io_notify, 1,  1);
-        if (sigio != NULL && !nm_ring_empty(srtp->rx_ring)) {
+        nready = poll(&fds, 1, 10);
+        if (nready > 0 && (fds.revents & POLLIN) != 0 && !nm_ring_empty(srtp->rx_ring)) {
             ndeq = dequeue_pkts(srtp->rx_ring, srtp->rx_zone, &pkts_in);
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 4)
             printf("%s: dequeued %d packets\n", tname, ndeq);
@@ -150,8 +153,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
 }
 
 struct sin_rx_thread *
-sin_rx_thread_ctor(const char *tname, struct netmap_ring *rx_ring,
-  struct sin_pkt_zone *rx_zone, struct sin_pkt_sorter *rx_sort, int *e)
+sin_rx_thread_ctor(const char *tname, struct wrk_set *wsp, int *e)
 {
     struct sin_rx_thread *srtp;
 
@@ -161,31 +163,19 @@ sin_rx_thread_ctor(const char *tname, struct netmap_ring *rx_ring,
         return (NULL);
     }
     memset(srtp, '\0', sizeof(struct sin_rx_thread));
-    srtp->io_notify = sin_wi_queue_ctor(e, "%s I/O notify queue", tname);
-    if (srtp->io_notify == NULL) {
-        goto er_undo_1;
-    }
-    srtp->sigio = sin_signal_ctor(SIGIO, e);
-    if (srtp->sigio == NULL) {
-        goto er_undo_2;
-    }
 
-    srtp->rx_ring = rx_ring;
-    srtp->rx_zone = rx_zone;
-    srtp->rx_sort = rx_sort;
+    srtp->rx_ring = wsp->rx_ring;
+    srtp->rx_zone = wsp->rx_zone;
+    srtp->rx_sort = wsp->rx_sort;
+    srtp->queue_fd = wsp->queue_fd;
 
     if (sin_wrk_thread_ctor(&srtp->t, tname,
       (void *(*)(void *))&sin_rx_thread, e) != 0) {
         goto er_undo_3;
     }
-    CALL_METHOD(&srtp->t, notify_on_ctrl, srtp->io_notify);
     return (srtp);
 
 er_undo_3:
-    sin_signal_dtor(srtp->sigio);
-er_undo_2:
-    sin_wi_queue_dtor(srtp->io_notify);
-er_undo_1:
     free(srtp);
     return (NULL);
 }
@@ -196,16 +186,5 @@ sin_rx_thread_dtor(struct sin_rx_thread *srtp)
 
     SIN_TYPE_ASSERT(srtp, _SIN_TYPE_WRK_THREAD);
     CALL_METHOD(&srtp->t, dtor);
-    sin_signal_dtor(srtp->sigio);
-    sin_wi_queue_dtor(srtp->io_notify);
     free(srtp);
-}
-
-void
-sin_rx_thread_wakeup(struct sin_rx_thread *srtp)
-{
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 5)
-     printf("sin_rx_thread_wakeup(%s)\n", CALL_METHOD(&srtp->t, get_tname));
-#endif
-     sin_wi_queue_put_item(srtp->sigio, srtp->io_notify, 1);
 }

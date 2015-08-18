@@ -36,7 +36,6 @@
 #include "include/libsinet.h"
 #include "sin_types.h"
 #include "sin_stance.h"
-#include "sin_ringmon_thread.h"
 #include "sin_rx_thread.h"
 #include "sin_tx_thread.h"
 #include "sin_pkt_zone.h"
@@ -51,7 +50,6 @@ sin_destroy(void *p)
     sip = (struct sin_stance *)p;
     SIN_TYPE_ASSERT(sip, _SIN_TYPE_SINSTANCE);
 
-    sin_ringmon_thread_dtor(sip->rx_mon_thread);
     sin_rx_thread_dtor(sip->hst.rx_thread);
     sin_pkt_sorter_dtor(sip->hst.rx_sort);
     for (i = 0; i < sip->nrings; i++) {
@@ -64,9 +62,11 @@ sin_destroy(void *p)
     }
     sin_pkt_zone_dtor(sip->hst.rx_zone);
     sin_pkt_zone_dtor(sip->hst.tx_zone);
+    close(sip->hst.queue_fd);
     for (i = 0; i < sip->nrings; i++) {
         sin_pkt_zone_dtor(sip->phy[i].rx_zone);
         sin_pkt_zone_dtor(sip->phy[i].tx_zone);
+        close(sip->phy[i].queue_fd);
     }
     free(sip->phy);
     close(sip->netmap_fd);

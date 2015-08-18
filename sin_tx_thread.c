@@ -25,6 +25,7 @@
  *
  */
 
+#include <sys/ioctl.h>
 #include <net/netmap_user.h>
 #ifdef SIN_DEBUG
 #include <assert.h>
@@ -45,6 +46,7 @@
 #include "sin_pkt_zone.h"
 #include "sin_mem_fast.h"
 #include "sin_pkt_zone_fast.h"
+#include "sin_stance.h"
 #include "sin_wi_queue.h"
 #include "sin_wrk_thread.h"
 #include "sin_tx_thread.h"
@@ -59,6 +61,7 @@ struct sin_tx_thread
     struct sin_wi_queue *outpkt_queue;
     struct netmap_ring *tx_ring;
     struct sin_pkt_zone *tx_zone;
+    int queue_fd;
 };
 
 static unsigned int
@@ -125,7 +128,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     struct sin_pkt_zone *tx_zone;
     struct sin_list pkts_out, pkts_t;
     struct sin_pkt *pkt, *pkt_next, *pkt_out;
-    unsigned int ntx, i;
+    unsigned int ntx, i, atx;
     const char *tname;
 
     tname = CALL_METHOD(&sttp->t, get_tname);
@@ -135,6 +138,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     SIN_LIST_RESET(&pkts_out);
     for (;;) {
         ntx = tx_ring_nslots(tx_ring);
+        atx = 0;
         if (ntx == 0) {
             goto nextcycle;
         }
@@ -174,6 +178,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
                 pkt_out = pkt_next;
             }
             advance_tx_ring(tname, tx_ring, ntx);
+            atx += ntx;
             pkts_out.head = (void *)pkt;
             if (pkt == NULL) {
                 pkts_out.tail = NULL;
@@ -186,6 +191,9 @@ sin_tx_thread(struct sin_tx_thread *sttp)
 #endif
         }
 nextcycle:
+        if (atx > 0) {
+            ioctl(sttp->queue_fd, NIOCTXSYNC, NULL);
+        }
         if (CALL_METHOD(&sttp->t, check_ctrl) == SIGTERM) {
             break;
         }
@@ -193,8 +201,7 @@ nextcycle:
 }
 
 struct sin_tx_thread *
-sin_tx_thread_ctor(const char *tname, struct netmap_ring *tx_ring,
-  struct sin_pkt_zone *tx_zone, int *e)
+sin_tx_thread_ctor(const char *tname, struct wrk_set *wsp, int *e)
 {
     struct sin_tx_thread *sttp;
 
@@ -209,8 +216,9 @@ sin_tx_thread_ctor(const char *tname, struct netmap_ring *tx_ring,
     if (sttp->outpkt_queue == NULL) {
         goto er_undo_1;
     }
-    sttp->tx_ring = tx_ring;
-    sttp->tx_zone = tx_zone;
+    sttp->tx_ring = wsp->tx_ring;
+    sttp->tx_zone = wsp->tx_zone;
+    sttp->queue_fd = wsp->queue_fd;
     if (sin_wrk_thread_ctor(&sttp->t, tname,
       (void *(*)(void *))&sin_tx_thread, e) != 0) {
         goto er_undo_2;
