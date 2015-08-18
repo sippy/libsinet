@@ -44,11 +44,11 @@
 #include "sin_wi_queue.h"
 
 struct icmphdr {
-    u_char  icmp_type;              /* type of message, see below */
-    u_char  icmp_code;              /* type sub code */
-    u_short icmp_cksum;             /* ones complement cksum of struct */
-    u_short icmp_id;
-    u_short icmp_seq;
+    uint8_t  icmp_type;              /* type of message, see below */
+    uint8_t  icmp_code;              /* type sub code */
+    uint16_t icmp_cksum;             /* ones complement cksum of struct */
+    uint16_t icmp_id;
+    uint16_t icmp_seq;
 } __attribute__((__packed__));
 
 struct ip4_icmp {
