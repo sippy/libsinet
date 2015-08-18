@@ -48,6 +48,17 @@
 #include "sin_ip4_icmp.h"
 #include "sin_wi_queue.h"
 
+#define SET_IFNOT_ERR_ELSE_RST(a, b, c, e, ee) \
+    if ((e) == 0) { \
+        (a) = (b); \
+        if ((a) < 0) { \
+            _SET_ERR((ee), errno); \
+            (e) = 1; \
+        } \
+    } else { \
+        (a) = (c); \
+    }
+
 void *
 sin_init(const char *ifname, int *e)
 {
@@ -100,13 +111,12 @@ sin_init(const char *ifname, int *e)
 
     grr_error = 0;
     for (i = 0; i < sip->nrings; i++) {
-        sip->phy[i].queue_fd = (grr_error == 0) ? open("/dev/netmap", O_RDWR) : -1;
-        if (grr_error == 0 && sip->phy[i].queue_fd == -1) {
-            grr_error = 1;
-        }
+        SET_IFNOT_ERR_ELSE_RST(sip->phy[i].queue_fd, open("/dev/netmap", O_RDWR),
+          -1, grr_error, e);
     }
-    sip->hst.queue_fd = (grr_error == 0) ? open("/dev/netmap", O_RDWR) : -1;
-    if (grr_error != 0 || sip->hst.queue_fd == -1) {
+    SET_IFNOT_ERR_ELSE_RST(sip->hst.queue_fd, open("/dev/netmap", O_RDWR), -1,
+      grr_error, e);
+    if (grr_error != 0) {
         goto er_undo_2;
     }
 
