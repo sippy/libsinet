@@ -136,28 +136,41 @@ sin_ip4_udp_taste(struct sin_pkt *pkt)
     return (1);
 }
 
-void
+static inline void
 sin_ip4_udp_mirror(struct sin_pkt *pkt)
 {
     struct ip4_udp_en10t *p;
     struct ip *iphdr;
     struct udphdr *udphdr;
+#if defined(SIN_DEBUG)
     uint32_t wsum;
     static const union {
         uint16_t u16;
         uint8_t b8[2];
     } ppad = {.b8 = {0x0, 0x11}};
+#endif
 
     p = (struct ip4_udp_en10t *)pkt->buf;
     sin_memswp(p->ether_shost, p->ether_dhost, 6);
     iphdr = &(p->ip4_udp.iphdr);
     sin_memswp((uint8_t *)&(iphdr->ip_src), (uint8_t *)&(iphdr->ip_dst),
       sizeof(struct in_addr));
+#if defined(SIN_DEBUG)
+    /*
+     * Unless we actually mess with IP header fields, just swapping src/dst
+     * is not affecting checksum.
+     */
     iphdr->ip_sum = 0;
     iphdr->ip_sum = sin_ip4_cksum(iphdr, sizeof(struct ip));
+#endif
     udphdr = &(p->ip4_udp.udphdr);
     sin_memswp((uint8_t *)&udphdr->src_port, (uint8_t *)&udphdr->dst_port,
       sizeof(uint16_t));
+#if defined(SIN_DEBUG)
+    /*
+     * Unless we actually change data, just swapping src/dst ports
+     * is not affecting checksum.
+     */
     sin_ip_chksum_start(wsum);
     sin_ip_chksum_update(wsum, &(iphdr->ip_src), sizeof(iphdr->ip_src));
     sin_ip_chksum_update(wsum, &(iphdr->ip_dst), sizeof(iphdr->ip_dst));
@@ -166,9 +179,10 @@ sin_ip4_udp_mirror(struct sin_pkt *pkt)
     sin_ip_chksum_update(wsum, &(udphdr->src_port), sizeof(udphdr->src_port));
     sin_ip_chksum_update(wsum, &(udphdr->dst_port), sizeof(udphdr->dst_port));
     sin_ip_chksum_update(wsum, &(udphdr->length), sizeof(udphdr->length));
-    sin_ip_chksum_update_data(wsum, &(udphdr->data),
-      ntohs(udphdr->length) - offsetof(struct udphdr, data));
+    sin_ip_chksum_update_data(wsum, &(udphdr->data), ntohs(udphdr->length) -
+      sizeof(struct udphdr));
     sin_ip_chksum_fin(wsum, udphdr->checksum);
+#endif
 }
 
 void
