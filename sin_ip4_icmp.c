@@ -123,7 +123,7 @@ sin_ip4_icmp_repl_taste(struct sin_pkt *pkt)
     return (1);
 }
 
-void
+static inline void
 sin_ip4_icmp_req2rpl(struct sin_pkt *pkt)
 {
     struct ip4_icmp_en10t *p;
