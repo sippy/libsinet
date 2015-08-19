@@ -17,7 +17,7 @@ SRCS=		include/libsinet.h sin_close.c libsinet_internal.h sin_socket.c \
 		sin_wrk_thread.c sin_tx_thread.c sin_tx_thread.h \
 		sin_ip4_icmp.c sin_ip4_icmp.h sin_list.h sin_destroy.c \
 		sin_debug.h sin_pkt_zone_fast.h sin_mem_fast.h sin_ip4.h \
-		sin_pkt_sorter.c sin_pkt_sorter.h
+		sin_pkt_sorter.c sin_pkt_sorter.h sin_ip4_udp.c sin_ip4_udp.h
 
 LDADD=		-l${LIBTHREAD}
 

@@ -46,6 +46,7 @@
 #include "sin_tx_thread.h"
 #include "sin_pkt_sorter.h"
 #include "sin_ip4_icmp.h"
+#include "sin_ip4_udp.h"
 #include "sin_wi_queue.h"
 
 #define SET_IFNOT_ERR_ELSE_RST(a, b, c, e, ee) \
@@ -212,6 +213,10 @@ sin_init(const char *ifname, int *e)
         tx_phy_queue = sin_tx_thread_get_out_queue(sip->phy[i].tx_thread);
         if (sin_pkt_sorter_reg(sip->phy[i].rx_sort, sin_ip4_icmp_taste,
           sin_ip4_icmp_proc, tx_phy_queue, e) != 0) {
+            goto er_undo_9;
+        }
+        if (sin_pkt_sorter_reg(sip->phy[i].rx_sort, sin_ip4_udp_taste,
+          sin_ip4_udp_proc, tx_phy_queue, e) != 0) {
             goto er_undo_9;
         }
     }
