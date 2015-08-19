@@ -74,27 +74,27 @@ struct ip4_udp_en10t {
 
 #define sin_ip_chksum_start(wsum) {(wsum) = 0; }
 #define sin_ip_chksum_update(wsum, dp, len) { \
-    uint16_t *ww; \
+    const uint16_t *ww; \
     int nleft; \
     DEBUG_ASSERT((len % 2) == 0); \
-    ww = (uint16_t *)(dp); \
+    ww = (const uint16_t *)(dp); \
     for (nleft = (len); nleft > 1; nleft -= 2)  { \
         (wsum) += *ww++; \
     } \
 }
 #define sin_ip_chksum_update_data(wsum, dp, len) { \
-    uint16_t *ww; \
+    const uint16_t *ww; \
     int nleft; \
     union { \
         uint16_t us; \
         uint8_t uc[2]; \
     } last; \
-    ww = (uint16_t *)(dp); \
+    ww = (const uint16_t *)(dp); \
     for (nleft = (len); nleft > 1; nleft -= 2)  { \
         (wsum) += *ww++; \
     } \
     if (nleft == 1) { \
-        last.uc[0] = *(uint8_t *)ww; \
+        last.uc[0] = *(const uint8_t *)ww; \
         last.uc[1] = 0; \
         (wsum) += last.us; \
     } \
@@ -130,7 +130,7 @@ sin_ip4_udp_taste(struct sin_pkt *pkt)
         return (0);
     }
     udphdr = &(p->ip4_udp.udphdr);
-    if (udphdr->length < offsetof(struct udphdr, data)) {
+    if (ntohs(udphdr->length) < offsetof(struct udphdr, data)) {
         return (0);
     }
     return (1);
@@ -167,7 +167,7 @@ sin_ip4_udp_mirror(struct sin_pkt *pkt)
     sin_ip_chksum_update(wsum, &(udphdr->dst_port), sizeof(udphdr->dst_port));
     sin_ip_chksum_update(wsum, &(udphdr->length), sizeof(udphdr->length));
     sin_ip_chksum_update_data(wsum, &(udphdr->data),
-      udphdr->length - offsetof(struct udphdr, data));
+      ntohs(udphdr->length) - offsetof(struct udphdr, data));
     sin_ip_chksum_fin(wsum, udphdr->checksum);
 }
 
