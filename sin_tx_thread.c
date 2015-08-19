@@ -37,6 +37,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "sin_types.h"
 #include "sin_list.h"
@@ -44,6 +45,7 @@
 #include "sin_errno.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
+#include "sin_math.h"
 #include "sin_mem_fast.h"
 #include "sin_pkt_zone_fast.h"
 #include "sin_stance.h"
@@ -128,7 +130,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     struct sin_pkt_zone *tx_zone;
     struct sin_list pkts_out, pkts_t;
     struct sin_pkt *pkt, *pkt_next, *pkt_out;
-    unsigned int ntx, i, atx;
+    unsigned int ntx, i, atx, aslots;
     const char *tname;
 
     tname = CALL_METHOD(&sttp->t, get_tname);
@@ -137,16 +139,14 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     tx_zone = sttp->tx_zone;
     SIN_LIST_RESET(&pkts_out);
     for (;;) {
-        ntx = tx_ring_nslots(tx_ring);
+        aslots = tx_ring_nslots(tx_ring);
         atx = 0;
-        if (ntx == 0) {
+        if (aslots == 0) {
             goto nextcycle;
         }
         sin_wi_queue_get_items(sttp->outpkt_queue, &pkts_out, 1, 1);
         if (!SIN_LIST_IS_EMPTY(&pkts_out)) {
-            if (ntx > pkts_out.len) {
-                ntx = pkts_out.len;
-            }
+            ntx = MIN(aslots, pkts_out.len);
             tx_zone_getpkts(tx_ring, tx_zone, &pkts_t, ntx);
             pkt = SIN_LIST_HEAD(&pkts_out);
             pkt_out = SIN_LIST_HEAD(&pkts_t);
@@ -191,11 +191,14 @@ sin_tx_thread(struct sin_tx_thread *sttp)
 #endif
         }
 nextcycle:
-        if (atx > 0) {
+        if (atx > 0 || aslots == 0) {
             ioctl(sttp->queue_fd, NIOCTXSYNC, NULL);
         }
         if (CALL_METHOD(&sttp->t, check_ctrl) == SIGTERM) {
             break;
+        }
+        if (aslots == 0) {
+            usleep(1000);
         }
     }
 }
