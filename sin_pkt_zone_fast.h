@@ -29,10 +29,12 @@ static inline void
 sin_pkt_zone_ret_pkt(struct sin_pkt *pkt)
 {
 
+    sin_pkt_zone_lock(pkt->my_zone);
 #ifdef SIN_DEBUG
     assert(pkt->my_zone->first[pkt->zone_idx] == NULL);
 #endif
     pkt->my_zone->first[pkt->zone_idx] = pkt;
+    sin_pkt_zone_unlock(pkt->my_zone);
 }
 
 static inline void

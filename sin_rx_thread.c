@@ -68,12 +68,14 @@ dequeue_pkts(struct netmap_ring *ring, struct sin_pkt_zone *pzone,
      nrx = 0;
      while (!nm_ring_empty(ring)) {
          i = ring->cur;
+         sin_pkt_zone_lock(pzone);
          pkt = pzone->first[i];
 #ifdef SIN_DEBUG
          assert(pkt->zone_idx == i);
          assert(pkt->buf == NETMAP_BUF(ring, ring->slot[i].buf_idx));
 #endif
          pzone->first[i] = NULL;
+         sin_pkt_zone_unlock(pzone);
          *pkt->ts = ring->ts;
          pkt->len = ring->slot[i].len;
          ring->cur = nm_ring_next(ring, i);
