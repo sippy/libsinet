@@ -25,16 +25,15 @@
  *
  */
 
-#ifdef SIN_DEBUG
-#include <assert.h>
-#endif
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 struct sin_pkt;
 
 #include "sin_types.h"
+#include "sin_debug.h"
 #include "sin_errno.h"
 #include "sin_pkt.h"
 #include "sin_list.h"
@@ -102,6 +101,7 @@ sin_pkt_sorter_proc(struct sin_pkt_sorter *spsp, struct sin_list *pl)
     struct sin_pkt *pkt, *pkt_next;
 
     for (pkt = SIN_LIST_HEAD(pl); pkt != NULL; pkt = pkt_next) {
+        SPKT_DBG_TRACE(pkt);
         for (psep = spsp->first; psep != NULL; psep = SIN_ITER_NEXT(psep)) {
             if (psep->pkt_taste(pkt)) {
                 pkt_next = SIN_ITER_NEXT(pkt);
