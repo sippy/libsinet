@@ -29,12 +29,9 @@ static inline void
 sin_pkt_zone_ret_pkt(struct sin_pkt *pkt)
 {
 
-    sin_pkt_zone_lock(pkt->my_zone);
-#ifdef SIN_DEBUG
-    assert(pkt->my_zone->first[pkt->zone_idx] == NULL);
-#endif
-    pkt->my_zone->first[pkt->zone_idx] = pkt;
-    sin_pkt_zone_unlock(pkt->my_zone);
+    SIN_DEBUG_ASSERT(sin_pkt_isbusy(pkt));
+    SIN_DEBUG_ASSERT(pkt == pkt->my_zone->pmap[pkt->zone_idx]);
+    sin_pkt_setflags(pkt, 0, SPKT_BUSY);
 }
 
 static inline void
