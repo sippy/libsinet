@@ -28,9 +28,6 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#ifdef SIN_DEBUG
-#include <assert.h>
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>

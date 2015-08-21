@@ -28,9 +28,6 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#ifdef SIN_DEBUG
-#include <assert.h>
-#endif
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -67,17 +64,11 @@ struct ip4_udp_en10t {
 
 #define SIN_IP4_UDP_MINLEN	(14 + 20 + 8)
 
-#if defined(SIN_DEBUG)
-#define DEBUG_ASSERT(x) assert((x))
-#else
-#define DEBUG_ASSERT(x)
-#endif
-
 #define sin_ip_chksum_start(wsum) {(wsum) = 0; }
 #define sin_ip_chksum_update(wsum, dp, len) { \
     const uint16_t *ww; \
     int nleft; \
-    DEBUG_ASSERT((len % 2) == 0); \
+    SIN_DEBUG_ASSERT((len % 2) == 0); \
     ww = (const uint16_t *)(dp); \
     for (nleft = (len); nleft > 1; nleft -= 2)  { \
         (wsum) += *ww++; \

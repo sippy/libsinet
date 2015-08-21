@@ -27,9 +27,6 @@
 
 #include <sys/types.h>
 #include <net/netmap_user.h>
-#ifdef SIN_DEBUG
-#include <assert.h>
-#endif
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -161,9 +158,7 @@ sin_pkt_zone_ret_all(struct sin_list *pl, __attribute__((unused))void *arg)
 #endif
 
     for (pkt = SIN_LIST_HEAD(pl); pkt != NULL; pkt = pkt_next) {
-#ifdef SIN_DEBUG
-        assert(zone == pkt->my_zone);
-#endif
+        SIN_DEBUG_ASSERT(zone == pkt->my_zone);
         pkt_next = SIN_ITER_NEXT(pkt);
         SIN_TYPE_LINK(pkt, NULL);
         sin_pkt_zone_ret_pkt(pkt);

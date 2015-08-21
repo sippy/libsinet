@@ -27,14 +27,12 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#ifdef SIN_DEBUG
-#include <assert.h>
-#endif
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "sin_types.h"
+#include "sin_debug.h"
 #include "include/libsinet.h"
 #include "libsinet_internal.h"
 #include "sin_errno.h"
