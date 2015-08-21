@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "sin_types.h"
 #include "sin_errno.h"
@@ -58,6 +59,7 @@ sin_pkt_ctor(struct sin_pkt_zone *my_zone, int zone_idx,
     pkt->zone_idx = zone_idx;
     pkt->my_slot = &(my_ring->slot[zone_idx]);
     pkt->buf = NETMAP_BUF(my_ring, pkt->my_slot->buf_idx);
+    pthread_mutex_init(&pkt->mutex, NULL);
 
     return (pkt);
 }
@@ -68,6 +70,21 @@ sin_pkt_dtor(struct sin_pkt *pkt)
 {
 
     SIN_TYPE_ASSERT(pkt, _SIN_TYPE_PKT);
+    pthread_mutex_destroy(&pkt->mutex);
     free(pkt->ts);
     free(pkt);
+}
+
+unsigned int
+sin_pkt_setflags(struct sin_pkt *pkt, unsigned int sflags, unsigned int rflags)
+{
+    unsigned int oldflags;
+
+    SIN_TYPE_ASSERT(pkt, _SIN_TYPE_PKT);
+    pthread_mutex_lock(&pkt->mutex);
+    oldflags = pkt->flags;
+    pkt->flags |= sflags;
+    pkt->flags &= ~rflags;
+    pthread_mutex_unlock(&pkt->mutex);
+    return (oldflags);
 }

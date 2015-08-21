@@ -28,6 +28,8 @@
 struct sin_pkt_zone;
 struct netmap_ring;
 
+#define SPKT_BUSY 0x1
+
 struct sin_pkt
 {
     struct sin_type_linkable t;
@@ -38,9 +40,44 @@ struct sin_pkt
     struct timeval *ts;
     char *buf;
     unsigned int len;
+    unsigned int flags;
+    pthread_mutex_t mutex;
+#if defined(SIN_DEBUG)
+    char last_seen[256];
+#endif
 };
+
+#if defined(SIN_DEBUG)
+#include <stdio.h>
+
+# define SPKT_DBG_TRACE(pp) { \
+    pthread_mutex_lock(&((pp)->mutex)); \
+    snprintf((pp)->last_seen, sizeof((pp)->last_seen), "%s(), %s:%d", \
+      __func__, __FILE__, __LINE__); \
+    pthread_mutex_unlock(&((pp)->mutex)); \
+}
+# define SPKT_DBG_TRACEF(pp, format, args...) { \
+    pthread_mutex_lock(&((pp)->mutex)); \
+    snprintf((pp)->last_seen, sizeof((pp)->last_seen), ("%s(), %s:%d: " format), \
+      __func__, __FILE__, __LINE__, ## args); \
+    pthread_mutex_unlock(&((pp)->mutex)); \
+}
+#else
+# define SPKT_DBG_TRACE(pp)
+# define SPKT_DBG_TRACEF(pp, format, args...)
+#endif
 
 struct sin_pkt *sin_pkt_ctor(struct sin_pkt_zone *my_zone,
   int zone_idx, struct netmap_ring *my_ring, int *sin_err);
 void sin_pkt_dtor(struct sin_pkt *pkt);
+unsigned int sin_pkt_setflags(struct sin_pkt *, unsigned int, unsigned int);
 
+static inline int sin_pkt_isbusy(struct sin_pkt *pkt)
+{
+    int rval;
+
+    pthread_mutex_lock(&pkt->mutex);
+    rval = pkt->flags & SPKT_BUSY;
+    pthread_mutex_unlock(&pkt->mutex);
+    return (rval);
+}
