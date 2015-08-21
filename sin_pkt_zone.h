@@ -31,8 +31,7 @@ struct sin_list;
 struct sin_pkt_zone {
     struct sin_type t;
     int netmap_fd;
-    struct sin_pkt **first;
-    struct sin_pkt **last;
+    struct sin_pkt **pmap;
     struct sin_pkt_zone_pvt *pvt;
 };
 

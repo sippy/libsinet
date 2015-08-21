@@ -36,6 +36,7 @@
 #include <string.h>
 
 #include "sin_types.h"
+#include "sin_debug.h"
 #include "sin_errno.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
@@ -46,6 +47,7 @@
 struct sin_pkt;
 
 struct sin_pkt_zone_pvt {
+    int num_slots;
     pthread_mutex_t mutex;
 };
 
@@ -56,7 +58,7 @@ sin_pkt_zone_fill_from_ring(struct sin_pkt_zone *spzp,
     int i, j;
     struct sin_pkt *pkt, **pkts;
 
-    pkts = spzp->first;
+    pkts = spzp->pmap;
     for (i = 0; i < (int)ring->num_slots; i++)  {
         pkt = sin_pkt_ctor(spzp, i, ring, e);
         if (pkt == NULL) {
@@ -65,6 +67,7 @@ sin_pkt_zone_fill_from_ring(struct sin_pkt_zone *spzp,
             }
             return (-1);
         }
+        SPKT_DBG_TRACE(pkt);
         pkts[i] = pkt;
     }
     return (i);
@@ -91,8 +94,8 @@ sin_pkt_zone_ctor(struct netmap_ring *ring, int netmap_fd, int *e)
         _SET_ERR(e, eval);
         goto er_undo_1;
     }
-    spzp->first = malloc(sizeof(struct sin_pkt *) * ring->num_slots);
-    if (spzp->first == NULL) {
+    spzp->pmap = malloc(sizeof(struct sin_pkt *) * ring->num_slots);
+    if (spzp->pmap == NULL) {
         _SET_ERR(e, ENOMEM);
         goto er_undo_2;
     }
@@ -100,8 +103,8 @@ sin_pkt_zone_ctor(struct netmap_ring *ring, int netmap_fd, int *e)
         goto er_undo_2;
     }
     SIN_TYPE_SET(spzp, _SIN_TYPE_PKT_ZONE);
-    spzp->last = spzp->first + ring->num_slots - 1;
     spzp->netmap_fd = netmap_fd;
+    spzp->pvt->num_slots = ring->num_slots;
 
     return (spzp);
 
@@ -117,13 +120,13 @@ er_undo_0:
 void
 sin_pkt_zone_dtor(struct sin_pkt_zone *spzp)
 {
-    struct sin_pkt **pkt;
+    int i;
 
     SIN_TYPE_ASSERT(spzp, _SIN_TYPE_PKT_ZONE);
-    for (pkt = spzp->first; pkt <= spzp->last; pkt++) {
-        free(*pkt);
+    for (i = 0; i < spzp->pvt->num_slots; i++) {
+        free(spzp->pmap[i]);
     }
-    free(spzp->first);
+    free(spzp->pmap);
     pthread_mutex_destroy(&spzp->pvt->mutex);
     free(spzp->pvt);
     free(spzp);
