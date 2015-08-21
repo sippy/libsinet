@@ -29,12 +29,9 @@
 #include <errno.h>
 #include <poll.h>
 #include <signal.h>
-#ifdef SIN_DEBUG
-#include <assert.h>
-#include <stdio.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "sin_types.h"
 #include "sin_debug.h"
@@ -68,18 +65,16 @@ dequeue_pkts(struct netmap_ring *ring, struct sin_pkt_zone *pzone,
      nrx = 0;
      while (!nm_ring_empty(ring)) {
          i = ring->cur;
-         sin_pkt_zone_lock(pzone);
-         pkt = pzone->first[i];
-#ifdef SIN_DEBUG
-         assert(pkt->zone_idx == i);
-         assert(pkt->buf == NETMAP_BUF(ring, ring->slot[i].buf_idx));
-#endif
-         pzone->first[i] = NULL;
-         sin_pkt_zone_unlock(pzone);
+         pkt = pzone->pmap[i];
+         SIN_DEBUG_ASSERT(sin_pkt_isbusy(pkt) == 0);
+         SIN_DEBUG_ASSERT(pkt->zone_idx == i);
+         SIN_DEBUG_ASSERT(pkt->buf == NETMAP_BUF(ring, ring->slot[i].buf_idx));
+         sin_pkt_setflags(pkt, SPKT_BUSY, 0);
          *pkt->ts = ring->ts;
          pkt->len = ring->slot[i].len;
          ring->cur = nm_ring_next(ring, i);
          sin_list_append(pl, pkt);
+         SPKT_DBG_TRACE(pkt);
          nrx++;
      }
      return (nrx);
@@ -101,21 +96,20 @@ _spin_ring(struct netmap_ring *ring,
 {
      unsigned int i, new_head;
 
-     if (ring->cur == nm_ring_next(ring, ring->head) ||
-       (ring->head == 0 && ring->cur == 0 && ring->tail == 0)) {
+     new_head = ring->head;
+     for (i = ring->head; i != ring->cur; i = new_head) {
+         if (sin_pkt_isbusy(pzone->pmap[i])) {
+             break;
+         }
+         new_head = nm_ring_next(ring, i);
+     }
+     if (new_head == ring->head) {
          return;
      }
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
      printf("%s: spin_ring: enter: ring->head = %u, ring->cur = %u, "
        "ring->tail = %u\n", tname, ring->head, ring->cur, ring->tail);
 #endif
-     new_head = ring->head;
-     for (i = ring->head; i != ring->cur; i = nm_ring_next(ring, i)) {
-         if (pzone->first[i] == NULL) {
-             break;
-         }
-         new_head = i;
-     }
      ring->head = new_head;
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
      printf("%s: spin_ring: exit: ring->head = %u, ring->cur = %u, "
