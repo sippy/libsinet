@@ -33,6 +33,7 @@
 #endif
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "sin_debug.h"
 #include "sin_types.h"
@@ -163,6 +164,7 @@ sin_ip4_icmp_proc(struct sin_list *pl, void *arg)
     outq = (struct sin_wi_queue *)arg;
     for (pkt = SIN_LIST_HEAD(pl); pkt != NULL; pkt = SIN_ITER_NEXT(pkt)) {
         sin_ip4_icmp_req2rpl(pkt);
+        SPKT_DBG_TRACE(pkt);
     }
     sin_wi_queue_put_items(pl, outq);
 }
