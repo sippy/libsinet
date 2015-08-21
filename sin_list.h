@@ -37,10 +37,8 @@ sin_list_append(struct sin_list *lst, void *p)
     struct sin_type_linkable *elem;
 
     elem = (struct sin_type_linkable *)p;
-#ifdef SIN_DEBUG
-    assert(SIN_TYPE_IS_LINKABLE(elem));
-    assert(elem->sin_next == NULL);
-#endif
+    SIN_DEBUG_ASSERT(SIN_TYPE_IS_LINKABLE(elem));
+    SIN_DEBUG_ASSERT(elem->sin_next == NULL);
     if (lst->head == NULL) {
         lst->head = lst->tail = elem;
     } else {
