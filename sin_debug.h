@@ -25,6 +25,16 @@
  *
  */
 
+#if defined(SIN_DEBUG)
+#include <assert.h>
+#endif
+
 #if defined(SIN_DEBUG) && !defined(SIN_DEBUG_WAVE)
 #define SIN_DEBUG_WAVE 4
+#endif
+
+#if defined(SIN_DEBUG)
+# define SIN_DEBUG_ASSERT(x) assert((x))
+#else
+# define SIN_DEBUG_ASSERT(x)
 #endif
