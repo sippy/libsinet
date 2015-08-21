@@ -27,21 +27,16 @@
 
 #include <sys/ioctl.h>
 #include <net/netmap_user.h>
-#ifdef SIN_DEBUG
-#include <assert.h>
-#endif
 #include <errno.h>
 #include <signal.h>
-#ifdef SIN_DEBUG
-#include <stdio.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "sin_types.h"
-#include "sin_list.h"
 #include "sin_debug.h"
+#include "sin_list.h"
 #include "sin_errno.h"
 #include "sin_pkt.h"
 #include "sin_pkt_zone.h"
@@ -83,11 +78,13 @@ tx_zone_getpkts(struct netmap_ring *ring, struct sin_pkt_zone *pkt_zone,
     unsigned int curidx;
 
     curidx = ring->cur;
-    plp->head = plp->tail = (void *)pkt_zone->first[curidx];
+    plp->head = plp->tail = (void *)pkt_zone->pmap[curidx];
+    SPKT_DBG_TRACE(pkt_zone->pmap[curidx]);
     plp->len = 1;
     for (; ntx > 1; ntx--) {
         curidx = nm_ring_next(ring, curidx);
-        sin_list_append(plp, pkt_zone->first[curidx]);
+        sin_list_append(plp, pkt_zone->pmap[curidx]);
+        SPKT_DBG_TRACE(pkt_zone->pmap[curidx]);
     }
 }
 
@@ -96,9 +93,7 @@ advance_tx_ring(struct netmap_ring *ring, unsigned int ntx)
 {
     unsigned int curidx;
 
-#ifdef SIN_DEBUG
-    assert(ntx < ring->num_slots);
-#endif
+    SIN_DEBUG_ASSERT(ntx < ring->num_slots);
 
     curidx = ring->cur;
     curidx += ntx;
@@ -128,8 +123,8 @@ sin_tx_thread(struct sin_tx_thread *sttp)
 {
     struct netmap_ring *tx_ring;
     struct sin_pkt_zone *tx_zone;
-    struct sin_list pkts_out, pkts_t;
-    struct sin_pkt *pkt, *pkt_next, *pkt_out;
+    struct sin_list pkts_out, pkts_tx;
+    struct sin_pkt *pkt, *pkt_next, *pkt_tx;
     unsigned int ntx, i, atx, aslots;
     const char *tname;
 
@@ -144,44 +139,49 @@ sin_tx_thread(struct sin_tx_thread *sttp)
         if (aslots == 0) {
             goto nextcycle;
         }
-        sin_wi_queue_get_items(sttp->outpkt_queue, &pkts_out, 1, 1);
+        if (SIN_LIST_IS_EMPTY(&pkts_out)) {
+            sin_wi_queue_get_items(sttp->outpkt_queue, &pkts_out, 1, 1);
+        }
         if (!SIN_LIST_IS_EMPTY(&pkts_out)) {
             ntx = MIN(aslots, pkts_out.len);
-            tx_zone_getpkts(tx_ring, tx_zone, &pkts_t, ntx);
+            tx_zone_getpkts(tx_ring, tx_zone, &pkts_tx, ntx);
             pkt = SIN_LIST_HEAD(&pkts_out);
-            pkt_out = SIN_LIST_HEAD(&pkts_t);
+            pkt_tx = SIN_LIST_HEAD(&pkts_tx);
             for (i = 0; i < ntx; i++) {
+                SPKT_DBG_TRACE(pkt);
 		if (tx_zone->netmap_fd == pkt->my_zone->netmap_fd) {
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-                    printf("%s: zero-copying %p to %p\n", tname, pkt, pkt_out);
+                    printf("%s: zero-copying %p to %p\n", tname, pkt, pkt_tx);
 #endif
-                    sin_pkt_zone_swap(pkt, pkt_out);
+                    sin_pkt_zone_swap(pkt, pkt_tx);
                 } else {
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-                    printf("%s: copying %p to %p\n", tname, pkt, pkt_out);
+                    printf("%s: copying %p to %p\n", tname, pkt, pkt_tx);
 #endif
-                    sin_pkt_zone_copy(pkt, pkt_out);
+                    sin_pkt_zone_copy(pkt, pkt_tx);
                 }
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 4)
                 printf("%s: sin_tx_thread: sending %p packet of length %u out\n",
-                  tname, pkt_out, pkt_out->len);
-                if (sin_ip4_icmp_repl_taste(pkt_out)) {
-                    sin_ip4_icmp_debug(pkt_out);
+                  tname, pkt_tx, pkt_tx->len);
+                if (sin_ip4_icmp_repl_taste(pkt_tx)) {
+                    sin_ip4_icmp_debug(pkt_tx);
                 }
 #endif
                 pkt_next = SIN_ITER_NEXT(pkt);
                 pkt->t.sin_next = NULL;
+                SPKT_DBG_TRACE(pkt);
                 sin_pkt_zone_ret_pkt(pkt);
                 pkt = pkt_next;
-                pkt_next = SIN_ITER_NEXT(pkt_out);
-                pkt_out->t.sin_next = NULL;
-                pkt_out = pkt_next;
+                pkt_next = SIN_ITER_NEXT(pkt_tx);
+                pkt_tx->t.sin_next = NULL;
+                pkt_tx = pkt_next;
             }
             advance_tx_ring(tname, tx_ring, ntx);
             atx += ntx;
             pkts_out.head = (void *)pkt;
             if (pkt == NULL) {
                 pkts_out.tail = NULL;
+                SIN_DEBUG_ASSERT(pkts_out.len == ntx);
                 pkts_out.len = 0;
             } else {
                 pkts_out.len -= ntx;
