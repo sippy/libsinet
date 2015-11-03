@@ -192,7 +192,7 @@ sin_init(const char *ifname, int *e)
     for (i = 0; i < sip->nrings; i++) {
         char tname[64];
 
-        sprintf(tname, "tx_phy #%d", i);
+        sprintf(tname, "tx_phy(%s) #%d", ifname, i);
         sip->phy[i].tx_thread = sin_tx_thread_ctor(tname, &sip->phy[i], e);
         if (sip->phy[i].tx_thread == NULL) {
             goto er_undo_7;
@@ -224,7 +224,7 @@ sin_init(const char *ifname, int *e)
     for (i = 0; i < sip->nrings; i++) {
         char tname[64];
 
-        sprintf(tname, "rx_phy #%d", i);
+        sprintf(tname, "rx_phy(%s) #%d", ifname, i);
         sip->phy[i].rx_thread = sin_rx_thread_ctor(tname, &sip->phy[i], e);
         if (sip->phy[i].rx_thread == NULL) {
             goto er_undo_10;
