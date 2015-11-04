@@ -97,11 +97,14 @@ struct ip4_udp_en10t {
     osum = ~(wsum); \
 }
 
+#define UNUSED(x) (void)(x)
+
 int
-sin_ip4_udp_taste(struct sin_pkt *pkt)
+sin_ip4_udp_taste(struct sin_pkt *pkt, void *ap)
 {
     struct ip4_udp_en10t *p;
     struct udphdr *udphdr;
+    UNUSED(ap);
 
     if (pkt->len < SIN_IP4_UDP_MINLEN) {
         return (0);

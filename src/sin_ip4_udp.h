@@ -27,6 +27,6 @@
 
 struct sin_list;
 
-int sin_ip4_udp_taste(struct sin_pkt *pkt);
+int sin_ip4_udp_taste(struct sin_pkt *pkt, void *ap);
 void sin_ip4_udp_debug(struct sin_pkt *pkt);
-void sin_ip4_udp_proc(struct sin_list *pl, void *arg);
+void sin_ip4_udp_proc(struct sin_list *pl, void *ap);

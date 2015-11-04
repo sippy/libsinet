@@ -63,10 +63,13 @@ struct ip4_icmp_en10t {
 
 #define SIN_IP4_ICMP_MINLEN	(14 + 20 + 16)
 
+#define UNUSED(x) (void)(x)
+
 int
-sin_ip4_icmp_taste(struct sin_pkt *pkt)
+sin_ip4_icmp_taste(struct sin_pkt *pkt, void *ap)
 {
     struct ip4_icmp_en10t *p;
+    UNUSED(ap);
 
     if (pkt->len < SIN_IP4_ICMP_MINLEN) {
         return (0);
