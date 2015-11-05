@@ -39,11 +39,16 @@ struct sin_pkt;
 #include "sin_list.h"
 #include "sin_pkt_sorter.h"
 
+struct ps_arg {
+    struct sin_wi_queue *outq;
+    void *ap;
+};
+
 struct ps_entry {
     struct sin_type_linkable t;
     int (*pkt_taste)(struct sin_pkt *, void *);
     void (*pkt_consume)(struct sin_list *, void *);
-    void *ps_arg;
+    struct ps_arg arg;
     struct sin_list wrklist;
 };
 
@@ -51,13 +56,13 @@ struct sin_pkt_sorter {
     struct sin_type t;
     struct ps_entry *first;
     void (*pkt_consume_default)(struct sin_list *, void *);
-    void *ps_arg;
+    struct ps_arg arg;
     struct sin_list wrklist;
 };
 
 struct sin_pkt_sorter *
-sin_pkt_sorter_ctor(void (*consume_default)(struct sin_list *, void *),
-  void *ps_arg, int *e)
+sin_pkt_sorter_ctor(struct sin_wi_queue *outq,
+  void (*consume_default)(struct sin_list *, void *), void *ap, int *e)
 {
     struct sin_pkt_sorter *inst;
 
@@ -69,13 +74,15 @@ sin_pkt_sorter_ctor(void (*consume_default)(struct sin_list *, void *),
     memset(inst, '\0', sizeof(*inst));
     SIN_TYPE_SET(inst, _SIN_TYPE_PKT_SORTER);
     inst->pkt_consume_default = consume_default;
-    inst->ps_arg = ps_arg;
+    inst->arg.outq = outq;
+    inst->arg.ap = ap;
     return (inst);
 }
 
 int
-sin_pkt_sorter_reg(struct sin_pkt_sorter *inst, int (*taste)(struct sin_pkt *, void *),
-  void (*consume)(struct sin_list *, void *), void *ps_arg, int *e)
+sin_pkt_sorter_reg(struct sin_pkt_sorter *inst, struct sin_wi_queue *outq,
+  int (*taste)(struct sin_pkt *, void *),
+  void (*consume)(struct sin_list *, void *), void *ap, int *e)
 {
     struct ps_entry *ent;
 
@@ -88,7 +95,8 @@ sin_pkt_sorter_reg(struct sin_pkt_sorter *inst, int (*taste)(struct sin_pkt *, v
     SIN_TYPE_SET(inst, _SIN_TYPE_ITERABLE);
     ent->pkt_taste = taste;
     ent->pkt_consume = consume;
-    ent->ps_arg = ps_arg;
+    ent->arg.outq = outq;
+    ent->arg.ap = ap;
     SIN_TYPE_LINK(ent, inst->first);
     inst->first = ent;
     return (0);
@@ -99,11 +107,13 @@ sin_pkt_sorter_proc(struct sin_pkt_sorter *spsp, struct sin_list *pl)
 {
     struct ps_entry *psep;
     struct sin_pkt *pkt, *pkt_next;
+    void *ap;
 
     for (pkt = SIN_LIST_HEAD(pl); pkt != NULL; pkt = pkt_next) {
         SPKT_DBG_TRACE(pkt);
         for (psep = spsp->first; psep != NULL; psep = SIN_ITER_NEXT(psep)) {
-            if (psep->pkt_taste(pkt, psep->ps_arg)) {
+            ap = (psep->arg.ap == NULL) ? (void *)psep->arg.outq : (void *)&(psep->arg);
+            if (psep->pkt_taste(pkt, ap)) {
                 pkt_next = SIN_ITER_NEXT(pkt);
                 SIN_TYPE_LINK(pkt, NULL);
                 sin_list_append(&psep->wrklist, pkt);
@@ -118,12 +128,14 @@ nextpkt:
     }
     for (psep = spsp->first; psep != NULL; psep = SIN_ITER_NEXT(psep)) {
         if (!SIN_LIST_IS_EMPTY(&psep->wrklist)) {
-            psep->pkt_consume(&psep->wrklist, psep->ps_arg);
+            ap = (psep->arg.ap == NULL) ? (void *)psep->arg.outq : (void *)&(psep->arg);
+            psep->pkt_consume(&psep->wrklist, ap);
             SIN_LIST_RESET(&psep->wrklist);
         }
     }
     if (!SIN_LIST_IS_EMPTY(&spsp->wrklist)) {
-        spsp->pkt_consume_default(&spsp->wrklist, spsp->ps_arg);
+        ap = (spsp->arg.ap == NULL) ? (void *)spsp->arg.outq : (void *)&(spsp->arg);
+        spsp->pkt_consume_default(&spsp->wrklist, ap);
         SIN_LIST_RESET(&spsp->wrklist);
     }
 }

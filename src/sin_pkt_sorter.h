@@ -25,13 +25,18 @@
  *
  */
 
-struct sin_pkt_sorter *sin_pkt_sorter_ctor(
-  void (*consume_default)(struct sin_list *, void *), void *consume_arg,
-  int *sin_err);
+struct sin_wi_queue;
+struct sin_list;
+
+typedef void (*sin_psort_consume_f)(struct sin_list *, void *);
+typedef int (*sin_psort_taste_f)(struct sin_pkt *, void *);
+
+struct sin_pkt_sorter *sin_pkt_sorter_ctor(struct sin_wi_queue *txq,
+  void (*consume_default)(struct sin_list *, void *), void *ap, int *sin_err);
 void sin_pkt_sorter_dtor(struct sin_pkt_sorter *);
-int sin_pkt_sorter_reg(struct sin_pkt_sorter *inst,
-  int (*taste)(struct sin_pkt *, void *), void (*consume)(struct sin_list *, void *),
-  void *consume_arg, int *sin_err);
+int sin_pkt_sorter_reg(struct sin_pkt_sorter *inst, struct sin_wi_queue *txq,
+  int (*taste)(struct sin_pkt *, void *),
+  void (*consume)(struct sin_list *, void *), void *consume_arg, int *sin_err);
 
 void sin_pkt_sorter_proc(struct sin_pkt_sorter *spsp, struct sin_list *pl);
 

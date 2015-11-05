@@ -46,7 +46,6 @@
 #include "sin_tx_thread.h"
 #include "sin_pkt_sorter.h"
 #include "sin_ip4_icmp.h"
-#include "sin_ip4_udp.h"
 #include "sin_wi_queue.h"
 
 #define SET_IFNOT_ERR_ELSE_RST(a, b, c, e, ee) \
@@ -205,18 +204,14 @@ sin_init(const char *ifname, int *e)
 
     tx_hst_queue = sin_tx_thread_get_out_queue(sip->hst.tx_thread);
     for (i = 0; i < sip->nrings; i++) {
-        sip->phy[i].rx_sort = sin_pkt_sorter_ctor(
-          (void *)sin_wi_queue_put_items, tx_hst_queue, e);
+        sip->phy[i].rx_sort = sin_pkt_sorter_ctor(tx_hst_queue,
+          (void *)sin_wi_queue_put_items, NULL, e);
         if (sip->phy[i].rx_sort == NULL) {
             goto er_undo_9;
         }
         tx_phy_queue = sin_tx_thread_get_out_queue(sip->phy[i].tx_thread);
-        if (sin_pkt_sorter_reg(sip->phy[i].rx_sort, sin_ip4_icmp_taste,
-          sin_ip4_icmp_proc, tx_phy_queue, e) != 0) {
-            goto er_undo_9;
-        }
-        if (sin_pkt_sorter_reg(sip->phy[i].rx_sort, sin_ip4_udp_taste,
-          sin_ip4_udp_proc, tx_phy_queue, e) != 0) {
+        if (sin_pkt_sorter_reg(sip->phy[i].rx_sort, tx_phy_queue,
+          sin_ip4_icmp_taste, sin_ip4_icmp_proc, NULL, e) != 0) {
             goto er_undo_9;
         }
     }
@@ -232,8 +227,8 @@ sin_init(const char *ifname, int *e)
     }
 
     tx_phy_queue = sin_tx_thread_get_out_queue(sip->phy[0].tx_thread);
-    sip->hst.rx_sort = sin_pkt_sorter_ctor((void *)sin_wi_queue_put_items,
-      tx_phy_queue, e);
+    sip->hst.rx_sort = sin_pkt_sorter_ctor(tx_phy_queue, (void *)sin_wi_queue_put_items,
+      NULL, e);
     if (sip->hst.rx_sort == NULL) {
         goto er_undo_10;
     }
