@@ -77,6 +77,8 @@ main(int argc, char **argv)
     }
 
     sinp = malloc(sizeof(void *) * argc);
+    args.port_min = 1000;
+    args.port_max = 65535;
     for (i = 0; i < argc; i++) {
         sin_err = 0;
         sinp[i] = sin_init(argv[i], &sin_err);

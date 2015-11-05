@@ -106,8 +106,10 @@ sin_ip4_udp_taste(struct sin_pkt *pkt, struct ps_arg *ap)
 {
     struct ip4_udp_en10t *p;
     struct udphdr *udphdr;
-    UNUSED(ap);
+    struct udpm_params *args;
+    int dst_port, src_port;
 
+    args = (struct udpm_params *)ap->ap;
     if (pkt->len < SIN_IP4_UDP_MINLEN) {
         return (0);
     }
@@ -128,6 +130,14 @@ sin_ip4_udp_taste(struct sin_pkt *pkt, struct ps_arg *ap)
     }
     udphdr = &(p->ip4_udp.udphdr);
     if (ntohs(udphdr->length) < offsetof(struct udphdr, data)) {
+        return (0);
+    }
+    dst_port = ntohs(udphdr->dst_port);
+    if (dst_port > args->port_max || dst_port < args->port_min) {
+        return (0);
+    }
+    src_port = ntohs(udphdr->src_port);
+    if (src_port > args->port_max || src_port < args->port_min) {
         return (0);
     }
     return (1);

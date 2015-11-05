@@ -33,5 +33,6 @@ void sin_ip4_udp_debug(struct sin_pkt *pkt);
 void sin_ip4_udp_proc(struct sin_list *pl, struct ps_arg *ap);
 
 struct udpm_params {
-    int dummy;
+    int port_min;
+    int port_max;
 };
