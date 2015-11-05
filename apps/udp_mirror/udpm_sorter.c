@@ -102,7 +102,7 @@ struct ip4_udp_en10t {
 #define UNUSED(x) (void)(x)
 
 int
-sin_ip4_udp_taste(struct sin_pkt *pkt, struct ps_arg *ap)
+udpm_taste(struct sin_pkt *pkt, struct ps_arg *ap)
 {
     struct ip4_udp_en10t *p;
     struct udphdr *udphdr;
@@ -192,6 +192,7 @@ sin_ip4_udp_mirror(struct sin_pkt *pkt)
 #endif
 }
 
+#if 0
 void
 sin_ip4_udp_debug(struct sin_pkt *pkt)
 {
@@ -203,9 +204,10 @@ sin_ip4_udp_debug(struct sin_pkt *pkt)
     printf("udp.src_port = %hu, udp.dst_port = %hu\n", ntohs(udphdr->src_port),
       ntohs(udphdr->dst_port));
 }
+#endif
 
 void
-sin_ip4_udp_proc(struct sin_list *pl, struct ps_arg *arg)
+udpm_proc(struct sin_list *pl, struct ps_arg *arg)
 {
     struct sin_pkt *pkt;
 

@@ -28,9 +28,8 @@
 struct sin_list;
 struct ps_arg;
 
-int sin_ip4_udp_taste(struct sin_pkt *pkt, struct ps_arg *ap);
-void sin_ip4_udp_debug(struct sin_pkt *pkt);
-void sin_ip4_udp_proc(struct sin_list *pl, struct ps_arg *ap);
+int udpm_taste(struct sin_pkt *pkt, struct ps_arg *ap);
+void udpm_proc(struct sin_list *pl, struct ps_arg *ap);
 
 struct udpm_params {
     int port_min;

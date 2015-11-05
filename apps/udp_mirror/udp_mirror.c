@@ -85,7 +85,7 @@ main(int argc, char **argv)
         if (sinp[i] == NULL) {
             errx(1, "sin_init(%s): %s", argv[i], strerror(sin_err));
         }
-        if (sin_sorter_reg(sinp[i], sin_ip4_udp_taste, sin_ip4_udp_proc, &args,
+        if (sin_sorter_reg(sinp[i], udpm_taste, udpm_proc, &args,
           &sin_err) != 0) {
             errx(1, "sin_sorter_reg(%s): %s", argv[i], strerror(sin_err));
         }
