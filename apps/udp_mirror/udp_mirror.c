@@ -35,6 +35,9 @@
 
 #include <include/libsinet.h>
 
+#include "sin_sorter.h"
+#include "udpm_sorter.h"
+
 static void
 usage(int eval)
 {
@@ -49,6 +52,7 @@ main(int argc, char **argv)
     void **sinp;
     int sin_err, i;
     int tout, ch;
+    struct udpm_params args;
 
     tout = 600;
     while ((ch = getopt(argc, argv, "t:")) != -1) {
@@ -78,6 +82,10 @@ main(int argc, char **argv)
         sinp[i] = sin_init(argv[i], &sin_err);
         if (sinp[i] == NULL) {
             errx(1, "sin_init(%s): %s", argv[i], strerror(sin_err));
+        }
+        if (sin_sorter_reg(sinp[i], sin_ip4_udp_taste, sin_ip4_udp_proc, &args,
+          &sin_err) != 0) {
+            errx(1, "sin_sorter_reg(%s): %s", argv[i], strerror(sin_err));
         }
     }
 

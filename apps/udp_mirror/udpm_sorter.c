@@ -37,10 +37,12 @@
 #include "sin_types.h"
 #include "sin_pkt.h"
 #include "sin_ip4.h"
-#include "sin_ip4_udp.h"
 #include "sin_mem_fast.h"
 #include "sin_list.h"
 #include "sin_wi_queue.h"
+#include "sin_sorter.h"
+
+#include "udpm_sorter.h"
 
 struct udphdr {
     uint16_t src_port ;              /* Source port */
@@ -100,7 +102,7 @@ struct ip4_udp_en10t {
 #define UNUSED(x) (void)(x)
 
 int
-sin_ip4_udp_taste(struct sin_pkt *pkt, void *ap)
+sin_ip4_udp_taste(struct sin_pkt *pkt, struct ps_arg *ap)
 {
     struct ip4_udp_en10t *p;
     struct udphdr *udphdr;
@@ -193,15 +195,13 @@ sin_ip4_udp_debug(struct sin_pkt *pkt)
 }
 
 void
-sin_ip4_udp_proc(struct sin_list *pl, void *arg)
+sin_ip4_udp_proc(struct sin_list *pl, struct ps_arg *arg)
 {
-    struct sin_wi_queue *outq;
     struct sin_pkt *pkt;
 
-    outq = (struct sin_wi_queue *)arg;
     for (pkt = SIN_LIST_HEAD(pl); pkt != NULL; pkt = SIN_ITER_NEXT(pkt)) {
         sin_ip4_udp_mirror(pkt);
         SPKT_DBG_TRACE(pkt);
     }
-    sin_wi_queue_put_items(pl, outq);
+    sin_wi_queue_put_items(pl, arg->outq);
 }

@@ -12,9 +12,9 @@ CFLAGS+=	-DSIN_DEBUG_WAVE=${SIN_DEBUG_WAVE}
 . endif
 .endif
 
-SRCS=		udp_mirror.c
+SRCS=		udp_mirror.c udpm_sorter.h udpm_sorter.c
 
-CFLAGS+=	-I${TOPSRC}
+CFLAGS+=	-I${TOPSRC} -I${SINSRC}
 LDADD=		-l${LIBTHREAD} -L${SINSRC} -lsinet
 
 WARNS?=		4
