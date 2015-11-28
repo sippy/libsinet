@@ -63,4 +63,6 @@ struct sin_type_linkable {
 
 #define SIN_ITER_NEXT(stlp)	((void *)((stlp)->t.sin_next))
 
+#define DEFINE_METHOD(class, func, rval, args...) typedef rval (*func##_t)(struct class *, ## args)
+#define METHOD_ENTRY(func, epname) func##_t epname
 #define CALL_METHOD(obj, method, args...) (obj)->method(obj, ## args)
