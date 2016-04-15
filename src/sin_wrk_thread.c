@@ -25,8 +25,14 @@
  *
  */
 
+#if defined(__FreeBSD__)
+#include <sys/thr.h>
+#endif
 #include <errno.h>
 #include <pthread.h>
+#if defined(__FreeBSD__)
+#include <pthread_np.h>
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,6 +52,9 @@ struct sin_wrk_thread_private {
     struct sin_wi_queue *ctrl_notify_queue;
     struct sin_signal *sigterm;
     void *(*runner)(void *);
+#if defined(__FreeBSD__)
+    long lwpid;
+#endif
 };
 
 static void sin_wrk_thread_dtor(struct sin_type_wrk_thread *swtp);
@@ -58,11 +67,19 @@ static void
 sin_wrk_thread_runner(struct sin_type_wrk_thread *swtp)
 {
 
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
-    printf("%s has started\n", swtp->pvt->tname);
+#if defined(__FreeBSD__)
+    thr_self(&swtp->pvt->lwpid);
+#endif
+
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 5)
+# if defined(__FreeBSD__)
+    printf("%s has started, LWP = %ld\n", swtp->pvt->tname, swtp->pvt->lwpid);
+# else
+    printf("%s has started", swtp->pvt->tname);
+# endif
 #endif
     swtp->pvt->runner(swtp);
-#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 3)
+#if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 5)
     printf("%s has stopped\n", swtp->pvt->tname);
 #endif
 }
@@ -106,6 +123,9 @@ sin_wrk_thread_ctor(struct sin_type_wrk_thread *swtp, const char *tname,
         _SET_ERR(e, rval);
         goto er_undo_3;
     }
+#if defined(__FreeBSD__)
+    pthread_set_name_np(swtp->pvt->tid, swtp->pvt->tname);
+#endif
     swtp->dtor = &sin_wrk_thread_dtor;
     swtp->check_ctrl = &sin_wrk_thread_check_ctrl;
     swtp->notify_on_ctrl = &sin_wrk_thread_notify_on_ctrl;
