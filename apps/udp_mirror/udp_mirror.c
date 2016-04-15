@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <err.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,13 +37,14 @@
 #include <include/libsinet.h>
 
 #include "sin_sorter.h"
+#include "udpm_daemon.h"
 #include "udpm_sorter.h"
 
 static void
 usage(int eval)
 {
 
-    printf("Usage: udp_mirror [-t timeout] if0[ if1[.. ifN]]\n");
+    printf("Usage: udp_mirror [-d] [-t timeout] if0[ if1[.. ifN]]\n");
     exit(eval);
 }
 
@@ -51,17 +53,21 @@ main(int argc, char **argv)
 {
     void **sinp;
     int sin_err, i;
-    int tout, ch;
+    int tout, ch, daemon_mode;
     struct udpm_params args;
 
-    tout = 600;
-    while ((ch = getopt(argc, argv, "t:")) != -1) {
+    tout = -1;
+    daemon_mode = 0;
+    while ((ch = getopt(argc, argv, "t:d")) != -1) {
         switch (ch) {
         case 't':
             tout = atoi(optarg);
             if (tout < 0) {
                 errx(1, "timeout needs to be non-negative");
              }
+             break;
+        case 'd':
+             daemon_mode = 1;
              break;
         case '?':
              usage(0);
@@ -74,6 +80,9 @@ main(int argc, char **argv)
 
     if (argc < 1) {
         errx(1, "at least one interface name is required");
+    }
+    if (daemon_mode != 0) {
+        udpm_daemon(0, 0);
     }
 
     sinp = malloc(sizeof(void *) * argc);
@@ -91,7 +100,14 @@ main(int argc, char **argv)
         }
     }
 
-    sleep(tout);
+    if (tout >= 0) {
+        sleep(tout);
+    } else {
+        sigset_t ss;
+
+        sigemptyset(&ss);
+        sigsuspend(&ss);
+    }
 
     for (i = 0; i < argc; i++) {
         sin_destroy(sinp[i]);
