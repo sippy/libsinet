@@ -115,9 +115,9 @@ udpm_taste(struct sin_pkt *pkt, struct ps_arg *ap)
     }
     p = (struct ip4_udp_en10t *)pkt->buf;
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 1)
-    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d, "
-      "icmp_type %hhu\n", pkt, p->ether_type, p->ip4_icmp.iphdr.ip_v,
-      p->ip4_icmp.iphdr.ip_p, p->ip4_icmp.icmphdr.icmp_type);
+    printf("inspecting %p, ether_type = %hu, ip_v = %d, ip_p = %d\n",
+      pkt, p->ether_type, p->ip4_udp.iphdr.ip_v,
+      p->ip4_udp.iphdr.ip_p);
 #endif
     if (p->ether_type != htons(0x0800)) {
         return (0);
