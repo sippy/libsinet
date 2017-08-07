@@ -136,7 +136,6 @@ sin_ip4_icmp_req2rpl(struct sin_pkt *pkt)
     iphdr = &(p->ip4_icmp.iphdr);
     sin_memswp((uint8_t *)&(iphdr->ip_src), (uint8_t *)&(iphdr->ip_dst),
       sizeof(struct in_addr));
-    iphdr->ip_sum = 0;
     iphdr->ip_sum = sin_ip4_cksum(iphdr, sizeof(struct ip));
     icmphdr = &(p->ip4_icmp.icmphdr);
     icmphdr->icmp_type = 0x0;
