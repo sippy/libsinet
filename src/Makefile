@@ -23,6 +23,10 @@ SRCS=		include/libsinet.h sin_close.c libsinet_internal.h sin_socket.c \
 		sin_pkt_sorter.c sin_pkt_sorter.h sin_math.h sin_sorter.c
 
 CFLAGS+=	-I${SINSRC}
+NO_APM_UNSUPP!=	cpp -Wno-address-of-packed-member -Werror 2>/dev/null || echo 1
+#if NO_APM_UNSUPP != 1
+CFLAGS+=	-Wno-address-of-packed-member
+#endif
 LDADD=		-l${LIBTHREAD}
 
 NO_PROFILE?=	YES
