@@ -133,6 +133,9 @@ sin_ip4_icmp_req2rpl(struct sin_pkt *pkt)
 
     p = (struct ip4_icmp_en10t *)pkt->buf;
     sin_memswp(p->ether_shost, p->ether_dhost, 6);
+#if (__clang__ == 1) && (__clang_major__ >= 3) && (__clang_minor__ > 8)
+# pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+#endif
     iphdr = &(p->ip4_icmp.iphdr);
     sin_memswp((uint8_t *)&(iphdr->ip_src), (uint8_t *)&(iphdr->ip_dst),
       sizeof(struct in_addr));
