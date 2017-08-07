@@ -24,9 +24,9 @@ SRCS=		include/libsinet.h sin_close.c libsinet_internal.h sin_socket.c \
 
 CFLAGS+=	-I${SINSRC}
 NO_APM_UNSUPP!=	cpp -Wno-address-of-packed-member -Werror 2>/dev/null || echo 1
-#if NO_APM_UNSUPP != 1
+.if ${NO_APM_UNSUPP} != 1
 CFLAGS+=	-Wno-address-of-packed-member
-#endif
+.endif
 LDADD=		-l${LIBTHREAD}
 
 NO_PROFILE?=	YES
