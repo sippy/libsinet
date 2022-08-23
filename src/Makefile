@@ -22,7 +22,7 @@ SRCS=		include/libsinet.h sin_close.c libsinet_internal.h sin_socket.c \
 		sin_debug.h sin_pkt_zone_fast.h sin_mem_fast.h sin_ip4.h \
 		sin_pkt_sorter.c sin_pkt_sorter.h sin_math.h sin_sorter.c
 
-CFLAGS+=	-I${SINSRC}
+CFLAGS+=	-I${SINSRC} -fPIC
 NO_APM_UNSUPP!=	cpp -Wno-address-of-packed-member -Werror /dev/null 2>/dev/null || echo 1
 .if ${NO_APM_UNSUPP} != 1
 CFLAGS+=	-Wno-address-of-packed-member
@@ -30,7 +30,7 @@ CFLAGS+=	-Wno-address-of-packed-member
 LDADD=		-l${LIBTHREAD}
 
 MK_PROFILE?=	no
-MK_SHARED?=	no
+NO_PIC?=	YES
 
 WARNS?=		4
 
