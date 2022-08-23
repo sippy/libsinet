@@ -30,7 +30,7 @@ CFLAGS+=	-Wno-address-of-packed-member
 LDADD=		-l${LIBTHREAD}
 
 MK_PROFILE?=	no
-MK_SHARED?=	yes
+MK_SHARED?=	no
 
 WARNS?=		4
 
