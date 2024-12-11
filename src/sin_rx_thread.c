@@ -121,7 +121,7 @@ static void
 sin_rx_thread(struct sin_rx_thread *srtp)
 {
     struct sin_list pkts_in;
-    [[maybe_unused]] const char *tname;
+    MY_MAYBE_UNUSED const char *tname;
     int nready;
     struct pollfd fds;
 
@@ -132,7 +132,7 @@ sin_rx_thread(struct sin_rx_thread *srtp)
     for (;;) {
         nready = poll(&fds, 1, 10);
         if (nready > 0 && (fds.revents & POLLIN) != 0 && !nm_ring_empty(srtp->rx_ring)) {
-            [[maybe_unused]] int ndeq;
+            MY_MAYBE_UNUSED int ndeq;
             ndeq = dequeue_pkts(srtp->rx_ring, srtp->rx_zone, &pkts_in);
 #if defined(SIN_DEBUG) && (SIN_DEBUG_WAVE < 4)
             printf("%s: dequeued %d packets\n", tname, ndeq);

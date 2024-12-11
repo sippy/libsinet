@@ -126,7 +126,7 @@ sin_tx_thread(struct sin_tx_thread *sttp)
     struct sin_list pkts_out, pkts_tx;
     struct sin_pkt *pkt, *pkt_next, *pkt_tx;
     unsigned int ntx, i, atx, aslots;
-    [[maybe_unused]] const char *tname;
+    MY_MAYBE_UNUSED const char *tname;
 
     tname = CALL_METHOD(&sttp->t, get_tname);
 
